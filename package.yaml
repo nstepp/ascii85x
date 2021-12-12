@@ -1,0 +1,53 @@
+name:                ascii85x
+version:             0.1.0.0
+github:              "nstepp/ascii85x"
+license:             BSD3
+author:              "Nigel Stepp"
+maintainer:          "stepp@atistar.net"
+copyright:           "2021 Nigel Stepp"
+
+extra-source-files:
+- README.md
+- ChangeLog.md
+
+synopsis:            Displays TI-85 variable files as text
+category:            Data
+
+# To avoid duplicated efforts in documentation and dealing with the
+# complications of embedding Haddock markup inside cabal files, it is
+# common to point users to the README.md file.
+description:         Please see the README on GitHub at <https://github.com/nstepp/ascii85x#readme>
+
+dependencies:
+- base >= 4.7 && < 5
+- array
+- text
+- bytestring
+- attoparsec
+
+library:
+  source-dirs: src
+
+executables:
+  ascii85x:
+    main:                Main.hs
+    source-dirs:         app
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    - -O2
+    dependencies:
+    - optparse-applicative
+    - ascii85x
+
+tests:
+  ascii85x-test:
+    main:                Spec.hs
+    source-dirs:         test
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - ascii85x
