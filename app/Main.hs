@@ -4,7 +4,7 @@ module Main where
 
 import Prelude hiding (putStrLn)
 import Control.Monad
-import Data.Text (Text, pack, intercalate)
+import Data.Text (Text, pack, intercalate, unpack)
 import Data.Text.Encoding (decodeUtf8, decodeLatin1)
 import Data.Text.IO (putStrLn)
 import Data.ByteString (ByteString)
@@ -12,6 +12,10 @@ import Data.ByteString (ByteString)
 import Options.Applicative
 
 import Data.TI85
+import System.Exit (exitSuccess)
+
+version :: Text
+version = "0.1.0.0"
 
 data Config = Config {
     showInfo :: Bool,
@@ -19,6 +23,12 @@ data Config = Config {
     verbose :: Bool,
     programFile :: FilePath
     }
+
+versionOpt = infoOption (unpack version) (
+    long "version"
+    <> short 'V'
+    <> help "Show version only"
+    )
 
 argParser :: Parser Config
 argParser = Config
@@ -42,7 +52,7 @@ argParser = Config
         <> help "85x variable file"
         )
 
-argInfo = info (argParser <**> helper) (
+argInfo = info (argParser <**> versionOpt <**> helper) (
     fullDesc <> progDesc "Convert TI-85 variable files to text"
     )
 
@@ -70,16 +80,19 @@ tiFileSummary tiFile =
 main :: IO ()
 main = do
     args <- execParser argInfo
-    if showInfo args
-    then do
+
+    when (showInfo args) $ do
         varFile <- readTIVarFile (programFile args)
         putStrLn (tiFileSummary varFile)
-    else do
-        (varFile, vars) <- readVariableFile (programFile args)
-        when (verbose args) $ putStrLn (tiFileSummary varFile)
-        when (debug args) $ print vars
-        let names = map (tiDecode.varName) (varsData varFile)
-        forM_ (zip names vars) $ \(name,var) -> do
-            putStrLn $ "\nVariable \"" <> name <> "\":"
-            printVariable var
+        exitSuccess
+
+    (varFile, vars) <- readVariableFile (programFile args)
+    when (verbose args) $ putStrLn (tiFileSummary varFile)
+    when (debug args) $ print vars
+    let tiVars = varsData varFile
+    let names = map (tiDecode.varName) tiVars
+    let types = map (showType.idToType.varId) tiVars
+    forM_ (zip3 names vars types) $ \(name,var,varType) -> do
+        putStrLn $ "\n" <> varType <> " \"" <> name <> "\":"
+        printVariable var
 
