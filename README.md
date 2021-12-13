@@ -77,7 +77,7 @@ A group file (`85g`) may contain many of these types of variables.
 
 ```
 $ ascii85x --help
-Usage: ascii85x [-i|--info] [-D|--debug] [-v|--verbose] VARFILE
+Usage: ascii85x [-i|--info] [-D|--debug] [-v|--verbose] VARFILE [-V|--version]
   Convert TI-85 variable files to text
 
 Available options:
@@ -85,5 +85,7 @@ Available options:
   -D,--debug               Show extra variable details
   -v,--verbose             Show variable file summary
   VARFILE                  85x variable file
+  -V,--version             Show version only
   -h,--help                Show this help text
 ```
+
