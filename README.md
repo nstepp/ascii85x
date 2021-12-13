@@ -22,36 +22,48 @@ went through school with their trusty TI calculator,
 have a catalog of TI-BASIC programs that you wrote
 for both fun and utility.
 
-If I look through my backup directory and see `CONICS.85p`,
-I might wonder what's in there and try `vim CONICS.85p`:
+If I look through my backup directory and see `RND.85p`,
+I might wonder what's in there and try `vim RND.85p`:
 
 ```
-**TI85**^Z^L^@Single file dated Mon Sep 27 15:41:32 20^@^@,^A                  
-^@^^^A^R^FCONICS^^^A^\^AìoVnboç3A/3B/3C/3D/3E/3Fo;^By1?^P¡^P3B2^Ax`3E^Q`^P ^P^P3B2^Ax`3E^QJaD4^@^P3C^Q^P3A2^AxJ`3D2^Ax`3F^Q^Q^Q^Qq^PD2^@^P3C^Q^Qo;^By2?^P¡^P3B2^Ax`3E^Qa^P ^P^P3B2^Ax`3E^QJaD4^@^P3C^Q^P3A2^AxJ`3D2^Ax`3F^Q^Q^Q^Qq^PD2^@^P3C^Q^QoØ^P^P3AP3C^Q@^P3BUD0^@^Q^QnÙoD45^@^K3»oÚoD.5^@®^P3Bq^P3Aa3C^Q^Q^K3»oÞo;^By3?^P®3»^Q2^Axo;^By4?^P®^P3»a^PBqD2^@^Q^Q^Q2^Axo<91>o<84>n<89>o<90>D1^@/D2^@/D3^@/D4^@oêÑH
+**TI85**^Z^L^@Group file dated Sun Sep 26 16:12:47 202^@^@^L^A^G^@^A^A^R^CRND^A^Aÿ^@D0^@^K3AoD0^@^K3BoD0^@^K3CoD0^@^K3DoD0^@^K3SoD0^@^K=^DoD100^@^K=^Eo¡D35^@^K=^FoD35^@^K=^GoD25^@^K=^BoD5^@^K=^Coìo<91>o<83>oÛ^P^PCUD22^@^Q@^P3CSD500^@^Q^QoØ^P^P¥^PApD2^@^Q^QPD1^@^QoÙo3A`D1^@^K3AoÚo3B`D1^@^K3BoÞo3C`D1^@^K3Co3S`^P3Aa3B^Q^K3So<98>^P3CqD5^@/3Aa3B^Qo<98>^P3CqD5^@/3Sq3C^QoÞoë^PD2^@/D1^@/3Aoë^PD3^@/D1^@/3Boë^PD4^@/D1^@/3Sq3Cv?
 ```
 
 Not so nice. As mentioned above, there are some options for decoding these files, but they didn't work for me, so I made `ascii85x`.
 
 ```
-$ ascii85x CONICS.85p
+$ ascii85x RND.85p
 
-Variable "CONICS":
+Program "RND":
+0→A
+0→B
+0→C
+0→D
+0→S
+0→xMin
+100→xMax
+-35→yMin
+35→yMax
+25→xScl
+5→yScl
 ClLCD
-Radian:Func
-Prompt A,B,C,D,E,F
-y1=(-(Bx+E)+(√((Bx+E)²-4(C)(Ax²+Dx+F))))/(2(C))
-y2=(-(Bx+E)-(√((Bx+E)²-4(C)(Ax²+Dx+F))))/(2(C))
-If ((A==C) and (B≠0)):Then
-45→α
-Else
-.5tan (B/(A-C))→α
-End
-y3=(tan α)x
-y4=(tan (α-(π/2)))x
 FnOff 
-ZStd:ZSqr
-FnOn 1,2,3,4
-DispG
+ClDrw
+While ((getKy≠22) and (C<=500))
+If ((int(rand*2))==1)
+Then
+A+1→A
+Else
+B+1→B
+End
+C+1→C
+S+(A-B)→S
+PtOn(C/5,A-B)
+PtOn(C/5,S/C)
+End
+Outpt(2,1,A
+Outpt(3,1,B
+Outpt(4,1,S/C
 ```
 
 Much better!
