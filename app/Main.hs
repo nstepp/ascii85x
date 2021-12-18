@@ -1,5 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
-
 module Main where
 
 import Prelude hiding (putStrLn)
@@ -13,9 +11,6 @@ import Options.Applicative
 
 import Data.TI85
 import System.Exit (exitSuccess)
-
-version :: Text
-version = "0.1.0.0"
 
 data Config = Config {
     showInfo :: Bool,

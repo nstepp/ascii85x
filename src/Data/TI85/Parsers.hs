@@ -1,4 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
 
 -- | This module contains the highest-level user-facing functions.
 -- Typically, code using this library will want to call `readVariableFile`

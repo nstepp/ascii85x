@@ -1,4 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
 
 -- | Behind "Data.TI85.Parsers" this is the next highest
 -- level module. This module defines the structure of a
