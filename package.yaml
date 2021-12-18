@@ -25,6 +25,9 @@ dependencies:
 - bytestring
 - attoparsec
 
+default-extensions:
+- OverloadedStrings
+
 library:
   source-dirs: src
 

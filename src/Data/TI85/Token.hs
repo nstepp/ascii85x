@@ -1,4 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
 
 -- | As a kind of object file or byte code, TI-85 programs can be
 -- represented as list of tokens.

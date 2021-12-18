@@ -1,4 +1,3 @@
-{-# LANGUAGE  OverloadedStrings #-}
 
 -- | Text data in a variable file is encoded using a
 -- special purpose code page. This module supports

@@ -1,4 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
 
 -- | Specifics of the TI-85 variables themselves
 -- (i.e. not their representation in the file).
