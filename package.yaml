@@ -20,10 +20,10 @@ description:         Please see the README on GitHub at <https://github.com/nste
 
 dependencies:
 - base >= 4.7 && < 5
-- array
-- text
-- bytestring
-- attoparsec
+- array >= 0.5
+- text >= 1.2
+- bytestring >= 0.10
+- attoparsec >= 0.13
 
 default-extensions:
 - OverloadedStrings
