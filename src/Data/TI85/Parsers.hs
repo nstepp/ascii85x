@@ -209,23 +209,22 @@ parseTINumber = do
 -- |Parser for the elements contained a variable file
 -- that has possibly more than one 
 parseTIVarData :: VarType -> Parser Variable
-parseTIVarData VarRealValue = TIScalar <$> parseTINumber
-parseTIVarData VarComplexValue = TIScalar <$> parseTINumber
-parseTIVarData VarVector = do
+parseTIVarData (VarValue _) = TIScalar <$> parseTINumber
+parseTIVarData (VarVector _) = do
     alwaysOne <- anyWord8
     len <- fromEnum <$> anyWord8
     vals <- count len parseTINumber
     return $ TIVector vals
-parseTIVarData VarList = do
+parseTIVarData (VarList _) = do
     len <- fromEnum <$> anyWord16
     vals <- count len parseTINumber
     return $ TIList vals
-parseTIVarData VarMatrix = do
+parseTIVarData (VarMatrix _) = do
     numCols <- fromEnum <$> anyWord8
     numRows <- fromEnum <$> anyWord8
     vals <- count numRows (count numCols parseTINumber)
     return $ TIMatrix vals
-parseTIVarData VarConstant = TIConstant <$> parseTINumber
+parseTIVarData (VarConstant _) = TIConstant <$> parseTINumber
 parseTIVarData VarEquation = do
     len <- fromEnum <$> anyWord16
     tokens <- parseTokenized len
@@ -237,6 +236,7 @@ parseTIVarData VarString = do
     TIString <$> parsePlaintext len
 parseTIVarData VarProgram = TIProgram <$> parseProgram
 parseTIVarData VarUnknown = return $ TIString "?"
+parseTIVarData _ = return $ TIString "(not implemented)"
 
 -- |Read the meta-data and structure of a variable file.
 readTIVarFile :: FilePath -> IO TIVarFile
@@ -260,5 +260,4 @@ readVariable var =
     let varType = idToType (varId var)
         parsedVar = parseOnly (parseTIVarData varType) (varData var)
     in either error id parsedVar
-
 
