@@ -53,3 +53,5 @@ tests:
     - -with-rtsopts=-N
     dependencies:
     - ascii85x
+    - hedgehog
+

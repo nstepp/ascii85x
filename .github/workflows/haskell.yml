@@ -1,0 +1,54 @@
+name: Haskell CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/setup-haskell@v1
+      with:
+        ghc-version: '8.10.3'
+        cabal-version: '3.2'
+        enable-stack: true
+        stack-version: 'latest'
+
+    - name: Cache stack
+      uses: actions/cache@v1
+      env:
+        cache-name: cache-stack
+      with:
+        path: ~/.stack
+        key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/*.yaml') }}
+        restore-keys: |
+          ${{ runner.os }}-build-${{ env.cache-name }}-
+          ${{ runner.os }}-build-
+          ${{ runner.os }}-
+
+    - name: Cache local stack
+      uses: actions/cache@v1
+      env:
+        cache-name: cache-local-stack
+      with:
+        path: .stack-work
+        key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ github.sha }}
+        restore-keys: |
+          ${{ runner.os }}-build-${{ env.cache-name }}-
+          ${{ runner.os }}-build-
+          ${{ runner.os }}-
+
+    - name: Install dependencies
+      run: |
+        stack update
+        stack build --only-dependencies
+    - name: Build
+      run: stack build
+    - name: Run tests
+      run: stack test

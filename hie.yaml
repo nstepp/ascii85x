@@ -1,3 +1,8 @@
 cradle:
   stack:
-
+    - path: "./src"
+      component: "ascii85x:lib"
+    - path: "./app"
+      component: "ascii85x:exe:ascii85x"
+    - path: "./test"
+      component: "ascii85x:test:ascii85x-test"
