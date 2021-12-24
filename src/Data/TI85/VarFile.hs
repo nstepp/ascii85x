@@ -10,6 +10,7 @@ module Data.TI85.VarFile (
     VarType(..),
     -- * Utilities
     idToType,
+    typeToId,
     showType
     ) where
 
