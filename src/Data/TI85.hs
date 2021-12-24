@@ -39,5 +39,5 @@ import Data.TI85.VarFile
 import Data.Text (Text, pack)
 
 version :: Text
-version = pack "0.1.2.0"
+version = pack "0.1.2.1"
 
