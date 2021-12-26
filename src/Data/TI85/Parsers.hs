@@ -246,7 +246,7 @@ readTIVarFile fileName = do
     either error return varFile
 
 -- |Read the details of a variable file, returning both
--- the raw contents and parse variables.
+-- the raw contents and parsed variables.
 readVariableFile :: FilePath -> IO (TIVarFile, [Variable])
 readVariableFile fileName = do
     varFile <- readTIVarFile fileName
