@@ -2,7 +2,7 @@
 Module      : Data.TI85
 Description : TI-85 variable file utilities.
 Copyright   : (c) Nigel Stepp, 2021
-License     : GPL-3
+License     : BSD3
 Maintainer  : stepp@atistar.net
 Stability   : experimental
 Portability : POSIX
