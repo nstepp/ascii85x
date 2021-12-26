@@ -7,6 +7,7 @@ module Data.TI85.VarFile (
     TIHeader(..),
     TIVarFile(..),
     TIVar(..),
+    VarField(..),
     VarType(..),
     -- * Utilities
     idToType,
@@ -56,6 +57,9 @@ data TIVar = TIVar {
     varData :: ByteString
     } deriving Show
 
+-- | Scalar values can either be real or complex.
+-- Likewise, vectors, lists, etc can contain values
+-- of either.
 data VarField = VarReal | VarComplex deriving Show
 
 -- | Possible variable types.
@@ -182,6 +186,8 @@ idToType 0x1d = VarMemory
 idToType 0x1e = VarUnknown
 idToType _ = VarUnknown
 
+-- | Convert the variable type into
+-- its ID. See `idToType`.
 typeToId :: VarType -> Word8
 typeToId (VarValue VarReal) = 0x00
 typeToId (VarValue VarComplex) = 0x01

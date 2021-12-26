@@ -42,6 +42,8 @@ data Variable =
 
 -- * Text Conversion
 
+-- | Utility for converting a showable
+-- to Text.
 showText :: Show a => a -> Text
 showText = pack.show
 
