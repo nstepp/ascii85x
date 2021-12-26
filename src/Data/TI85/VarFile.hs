@@ -90,6 +90,7 @@ data VarType = VarUnknown
 -- | Convert the variable ID word from
 -- a variable file into its type.
 -- From https://www.ticalc.org/pub/text/calcinfo/ti86prot.txt:
+--
 -- +---------+-------------------+
 -- | Type ID | Description       |
 -- +=========+===================+
