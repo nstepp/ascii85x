@@ -6,10 +6,13 @@ import Data.Text (Text, pack, intercalate, unpack)
 import Data.Text.Encoding (decodeUtf8, decodeLatin1)
 import Data.Text.IO (putStrLn)
 import Data.ByteString (ByteString)
+import Data.Version
 
 import Options.Applicative
 
 import Data.TI85
+import Paths_ascii85x (version)
+
 import System.Exit (exitSuccess)
 
 data Config = Config {
@@ -19,7 +22,7 @@ data Config = Config {
     programFile :: FilePath
     }
 
-versionOpt = infoOption (unpack version) (
+versionOpt = infoOption (showVersion version) (
     long "version"
     <> short 'V'
     <> help "Show version only"
