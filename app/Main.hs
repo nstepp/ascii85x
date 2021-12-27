@@ -4,11 +4,12 @@ import Prelude hiding (putStrLn)
 import Control.Monad
 import Data.List (isSuffixOf)
 import Data.Text (Text, pack, intercalate, unpack)
-import Data.Text.Encoding (decodeUtf8, decodeLatin1)
+import Data.Text.Encoding (decodeLatin1)
 import Data.Text.IO (putStrLn)
 import Data.ByteString (ByteString)
 import Data.Word
 import Data.Version
+import Numeric (showHex)
 
 import Options.Applicative
 
@@ -16,7 +17,6 @@ import Data.TI85
 import Paths_ascii85x (version)
 
 import System.Exit (exitSuccess)
-import Numeric (showHex)
 
 data Config = Config {
     showInfo :: Bool,
@@ -57,31 +57,10 @@ argInfo = info (argParser <**> versionOpt <**> helper) (
     fullDesc <> progDesc "Convert TI-85 variable files to text"
     )
 
-tiFileSummary :: TIVarFile -> Text
-tiFileSummary tiFile =
-    let hdr = Data.TI85.header tiFile
-        check = checksum tiFile
-        sig = decodeLatin1 $ hdrSig hdr
-        comment = decodeLatin1 $ hdrComment hdr
-        vars = varsData tiFile
-    in
-        "\nTI Variable File <" <> sig <> ">\n" <>
-        "\"" <> comment <> "\"\n\n" <>
-        "Variables:\n" <>
-        intercalate "\n" (map varSummary vars)
-  where
-    varSummary :: TIVar -> Text
-    varSummary var =
-        let varIdStr = (pack.show.fromEnum) (varId var)
-            varIdType = (showType.idToType) (varId var)
-        in  "\tName: " <> tiDecode (varName var) <> "\n" <>
-            "\tType: " <> varIdType <> " (" <> varIdStr <> ")\n" <>
-            "\tLength : " <> (pack.show.fromEnum) (varDataLen var) <> "\n"
-
 processVarFile :: Config -> FilePath -> IO ()
 processVarFile args filename = do
     (varFile, vars) <- readVariableFile filename
-    when (verbose args) $ putStrLn (tiFileSummary varFile)
+    when (verbose args) $ printFileSummary varFile
     when (debug args) $ print vars
     let tiVars = varsData varFile
     let names = map (tiDecode.varName) tiVars
@@ -89,17 +68,6 @@ processVarFile args filename = do
     forM_ (zip3 names vars types) $ \(name,var,varType) -> do
         putStrLn $ "\n" <> varType <> " \"" <> name <> "\":"
         printVariable var
-
-printVariableTable :: Word16 -> VarTable -> IO ()
-printVariableTable baseAddr vars = do
-    forM_ vars printEntry
-  where
-    printEntry (VarTableEntry idNum addr _ name) = do
-        let idName = (showType.idToType) idNum
-        let offset = addr - baseAddr 
-        putStrLn $ "Name: " <> tiDecode name <> "\n" <>
-            "Type: " <> idName <> "\n" <>
-            "Addr: " <> pack (showHex addr "") <> " (offset " <> (pack.show) offset <> ")\n"
 
 processBackupFile :: Config -> FilePath -> IO ()
 processBackupFile args filename = do
@@ -123,7 +91,7 @@ main = do
 
     when (showInfo args) $ do
         varFile <- readTIVarFile (programFile args)
-        putStrLn (tiFileSummary varFile)
+        printFileSummary varFile
         exitSuccess
     let filename = programFile args
     if ".85b" `isSuffixOf` filename || ".85B" `isSuffixOf` filename
