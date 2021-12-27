@@ -3,14 +3,21 @@
 -- Typically, code using this library will want to call `readVariableFile`
 -- on a file name.
 module Data.TI85.Parsers (
-    -- * High-level File IO
+    -- * Backup Files
+    -- ** High-level File IO
+    readTIBackupFile,
+    -- ** High-level Parsers
+    parseTIBackupFile,
+    parseTIBackupHeader,
+    -- * Variable Files
+    -- ** High-level File IO
     readTIVarFile,
     readVariableFile,
-    -- * High-level Parsers
+    -- ** High-level Parsers
     parseTIVarFile,
     parseTIHeader,
     parseTIVarData,
-    -- * Lower-level Parsers
+    -- ** Lower-level Parsers
     parseProgram,
     parseTINumber,
     parseToken
@@ -35,6 +42,7 @@ import Data.TI85.Var
 import Data.TI85.VarFile
 import Data.TI85.Encoding
 import Data.TI85.Token
+import Data.TI85.BackupFile
 
 bytes2Int :: ByteString -> Int
 bytes2Int = BS.foldr' (\w x -> 256*x + fromEnum w) 0
@@ -44,6 +52,68 @@ anyWord16 = do
     bytes <- take 2
     let val = bytes2Int bytes
     return (toEnum val)
+
+parseTIBackupHeader :: Parser TIBackupHeader
+parseTIBackupHeader = do
+    dataOffset <- string "\x09\x00"
+    len1 <- anyWord16
+    typeId <- word8 0x1d
+    len2 <- anyWord16
+    len3 <- anyWord16
+    addr <- anyWord16
+    return $ TIBackupHeader {
+        hdrDataLenOffset = 0x9,
+        hdrData1Len = len1,
+        hdrTypeID = typeId,
+        hdrData2Len = len2,
+        hdrData3Len = len2,
+        hdrData2Addr = addr
+        }
+
+parseVarTableEntry :: Parser VarTableEntry
+parseVarTableEntry = do
+    entId <- anyWord8
+    entAddr <- anyWord16
+    len <- anyWord8
+    name <- take (fromEnum len)
+    return $ VarTableEntry {
+        entryId = entId,
+        entryAddr = entAddr,
+        entryNameLen = len,
+        entryName = name
+        }
+
+parseTIBackupFile :: Parser TIBackupFile
+parseTIBackupFile = do
+    hdr <- parseTIHeader
+    backupHdr <- parseTIBackupHeader
+    len1 <- anyWord16
+    data1 <- take $ fromEnum len1
+    len2 <- anyWord16
+    data2 <- take $ fromEnum len2
+    len3 <- anyWord16
+    data3 <- take $ fromEnum len3
+    let vars = parseOnly (many' parseVarTableEntry) (BS.reverse data3)
+    chk <- anyWord16
+    return $ TIBackupFile {
+        tiHeader = hdr,
+        backupHeader = backupHdr,
+        data1Len = len1,
+        data1 = data1,
+        data2Len = len2,
+        data2 = data2,
+        varTableLen = len3,
+        varTable = either error id vars,
+        backupChecksum = chk
+        }
+
+-- |Read the meta-data and structure of a variable file.
+readTIBackupFile :: FilePath -> IO TIBackupFile
+readTIBackupFile fileName = do
+    contents <- BS.readFile fileName
+    let backupFile = parseOnly parseTIBackupFile contents
+    either error return backupFile
+
 
 -- |The TI-85 header is common between backup files
 -- and variable files.
