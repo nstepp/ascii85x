@@ -6,7 +6,7 @@ import Data.List (isSuffixOf)
 import Data.Text (Text, pack, intercalate, unpack)
 import Data.Text.Encoding (decodeLatin1)
 import Data.Text.IO (putStrLn)
-import Data.ByteString (ByteString)
+import Data.ByteString (ByteString, foldr')
 import Data.Word
 import Data.Version
 import Numeric (showHex)
@@ -76,14 +76,22 @@ processBackupFile args filename = do
     let comment = decodeLatin1 (hdrComment hdr)
     let backupHdr = backupHeader tiBackup
     let data2Addr = hdrData2Addr backupHdr
+    let dataDisplay = if verbose args
+        then print . foldr' hexify ""
+        else print
     putStrLn $ "Backup File: " <> comment
     putStrLn $ pack $ "Data Section 1 (" <> show (data1Len tiBackup) <> "):"
-    print $ data1 tiBackup
+    dataDisplay (data1 tiBackup)
     putStrLn $ pack $ "Data Section 2 (" <> show (data2Len tiBackup) <> "):"
-    print $ data2 tiBackup
+    dataDisplay (data2 tiBackup)
     putStrLn $ pack $ "Data 2 Address: " <> showHex data2Addr "\n"
     putStrLn $ pack $ "Variable Table (" <> show (varTableLen tiBackup) <> "):"
     printVariableTable data2Addr (varTable tiBackup)
+  where
+    hexify :: Word8 -> ShowS
+    hexify w = 
+        let pad = if w < 0xf then "0" else ""
+        in \s' -> pad <> showHex w s'
 
 main :: IO ()
 main = do
