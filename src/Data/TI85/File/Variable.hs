@@ -2,7 +2,7 @@
 -- | Behind "Data.TI85.Parsers" this is the next highest
 -- level module. This module defines the structure of a
 -- TI-85 variable file.
-module Data.TI85.VarFile (
+module Data.TI85.File.Variable (
     -- * Types
     TIHeader(..),
     TIVarFile(..),

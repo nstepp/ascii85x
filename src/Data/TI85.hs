@@ -26,8 +26,7 @@ module Data.TI85 (
     module Data.TI85.Token,
     module Data.TI85.Parsers,
     module Data.TI85.Var,
-    module Data.TI85.VarFile,
-    module Data.TI85.BackupFile,
+    module Data.TI85.File,
     module Data.TI85.IO
     ) where
 
@@ -35,7 +34,6 @@ import Data.TI85.Encoding
 import Data.TI85.Token
 import Data.TI85.Parsers
 import Data.TI85.Var
-import Data.TI85.VarFile
-import Data.TI85.BackupFile
+import Data.TI85.File
 import Data.TI85.IO
 

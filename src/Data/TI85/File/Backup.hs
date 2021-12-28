@@ -3,13 +3,13 @@
 -- A backup file contains system memory (data section 1), user
 -- memory (section 2), and a variable table that maps where
 -- user variables are located in data section 2.
-module Data.TI85.BackupFile where
+module Data.TI85.File.Backup where
 
 import Data.ByteString (ByteString)
 import Data.Text (Text)
 import Data.Word (Word8,Word16)
 
-import Data.TI85.VarFile (TIHeader, VarType)
+import Data.TI85.File.Variable (TIHeader, VarType)
 
 -- | An entry in the variable table.
 -- Note: the variable table is stored in

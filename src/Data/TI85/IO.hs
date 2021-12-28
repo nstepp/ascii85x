@@ -9,8 +9,7 @@ import Data.Word
 import Numeric (showHex)
 
 import Data.TI85.Encoding
-import Data.TI85.BackupFile
-import Data.TI85.VarFile
+import Data.TI85.File
 
 
 printVariableTable :: Word16 -> VarTable -> IO ()

@@ -36,13 +36,12 @@ import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Text.IO (putStrLn)
 import Data.Attoparsec.ByteString
-import Control.Monad (guard)
+import Control.Monad (guard, when)
 
 import Data.TI85.Var
-import Data.TI85.VarFile
 import Data.TI85.Encoding
 import Data.TI85.Token
-import Data.TI85.BackupFile
+import Data.TI85.File
 
 bytes2Int :: ByteString -> Int
 bytes2Int = BS.foldr' (\w x -> 256*x + fromEnum w) 0
