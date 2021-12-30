@@ -2,6 +2,8 @@ module Data.TI85.IO where
 
 import Prelude hiding (putStrLn)
 import Control.Monad
+import Data.ByteString (ByteString)
+import qualified Data.ByteString as BS
 import Data.Text (Text, intercalate, pack)
 import Data.Text.Encoding (decodeLatin1)
 import Data.Text.IO (putStrLn)
@@ -10,6 +12,8 @@ import Numeric (showHex)
 
 import Data.TI85.Encoding
 import Data.TI85.File
+import Data.TI85.Parsers
+import Data.TI85.Var
 
 
 printVariableTable :: Word16 -> VarTable -> IO ()
@@ -22,6 +26,20 @@ printVariableTable baseAddr vars = do
         putStrLn $ "Name: " <> tiDecode name <> "\n" <>
             "Type: " <> idName <> "\n" <>
             "Addr: " <> pack (showHex addr "") <> " (offset " <> (pack.show) offset <> ")\n"
+
+extractVariableTable :: Word16 -> TIBackupData -> IO ()
+extractVariableTable baseAddr tiBackup = do
+    let table = varTable tiBackup
+    let userData = data2 tiBackup
+    let vars = readUserMem baseAddr table userData
+    forM_ table $ \entry@(VarTableEntry idNum addr _nameLen name) -> do
+        let var = readVarMem baseAddr entry userData
+        putStrLn $ "\n" <> (showType . idToType ) idNum <> " \"" <> tiDecode name <> "\""
+            <> " at 0x" <> hexify addr <> " (0x" <> hexify (addr-baseAddr) <> "):\n"
+        printVariable var
+  where
+    hexify :: Word16 -> Text
+    hexify w = pack (showHex w "")
 
 printFileSummary :: TIFile -> IO ()
 printFileSummary tiFile =

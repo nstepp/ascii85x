@@ -1,16 +1,15 @@
 module Main where
 
-import Prelude hiding (putStrLn)
+import Prelude hiding (putStrLn,take,drop)
 import Control.Monad
-import Data.List (isSuffixOf)
-import Data.Text (Text, pack, intercalate, unpack)
-import Data.Text.Encoding (decodeLatin1)
+import Data.Text (pack)
 import Data.Text.IO (putStrLn)
-import Data.ByteString (ByteString, foldr')
+import Data.ByteString (foldr',take,drop)
 import Data.Word
 import Data.Version
 import Numeric (showHex)
 
+import Data.Attoparsec.ByteString (parseOnly)
 import Options.Applicative
 
 import Data.TI85
@@ -81,6 +80,10 @@ processBackupData config tiBackup = do
     putStrLn $ pack $ "Data 2 Address: " <> showHex data2Addr "\n"
     putStrLn $ pack $ "Variable Table (" <> show (varTableLen tiBackup) <> "):"
     printVariableTable data2Addr (varTable tiBackup)
+
+    when (verbose config) $ do
+        extractVariableTable data2Addr tiBackup
+
   where
     hexify :: Word8 -> ShowS
     hexify w =

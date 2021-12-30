@@ -10,6 +10,10 @@ module Data.TI85.Parsers (
     -- * Backup Files
     -- ** High-level Parsers
     parseTIBackupHeader,
+    readUserMem,
+    -- ** Lower-level Parsers
+    readVarMem,
+    extractVar,
     -- * Variable Files
     -- ** High-level File IO
     readVariableFile,
@@ -35,8 +39,9 @@ import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Text.IO (putStrLn)
 import Data.Attoparsec.ByteString
+import Data.Attoparsec.Combinator (lookAhead)
 import Control.Applicative
-import Control.Monad (guard, when)
+import Control.Monad (guard, when, forM)
 
 import Data.TI85.Var
 import Data.TI85.Encoding
@@ -307,6 +312,25 @@ parseVariable VarString = do
 parseVariable VarProgram = TIProgram <$> parseProgram
 parseVariable VarUnknown = return $ TIString "?"
 parseVariable _ = return $ TIString "(not implemented)"
+
+parseUserMem :: Word16 -> VarTable -> Parser [Variable]
+parseUserMem baseAddr vars = do
+    forM vars (extractVar baseAddr)
+
+extractVar :: Word16 -> VarTableEntry -> Parser Variable
+extractVar baseAddr (VarTableEntry idNum addr _ name) = do
+    let offset = fromEnum $ addr - baseAddr
+    lookAhead $ take offset *> parseVariable (idToType idNum)
+
+readVarMem :: Word16 -> VarTableEntry -> ByteString -> Variable
+readVarMem baseAddr entry userData =
+    let var = parseOnly (extractVar baseAddr entry) userData
+    in either error id var
+
+readUserMem :: Word16 -> VarTable -> ByteString -> [Variable]
+readUserMem baseAddr table userData =
+    let vars = parseOnly (parseUserMem baseAddr table) userData
+    in either error id vars
 
 -- |Read the details of a variable file, returning both
 -- the raw contents and parsed variables.
