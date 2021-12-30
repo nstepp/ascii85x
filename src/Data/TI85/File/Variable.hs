@@ -32,7 +32,7 @@ data TIVar = TIVar {
 
 newtype TIVarData = TIVarData {
     varsData :: [TIVar]
-    }
+    } deriving Show
 
 -- | Scalar values can either be real or complex.
 -- Likewise, vectors, lists, etc can contain values

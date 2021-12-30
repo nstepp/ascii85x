@@ -37,11 +37,13 @@ data TIHeader = TIHeader {
 --   encoded in a variable-specific way.
 -- * Backup files contain memory dumps, which also
 --   include variable data in a raw form.
-data TIFileData = BackupData TIBackupData | VariableData TIVarData 
+data TIFileData = BackupData TIBackupData
+    | VariableData TIVarData
+    deriving Show
 
 data TIFile = TIFile {
     tiHeader :: TIHeader,
     tiData :: TIFileData,
     tiChecksum :: Word16
-    }
+    } deriving Show
 
