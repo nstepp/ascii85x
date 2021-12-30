@@ -22,7 +22,7 @@ data Config = Config {
     showInfo :: Bool,
     debug :: Bool,
     verbose :: Bool,
-    programFile :: FilePath
+    filePath :: FilePath
     }
 
 versionOpt = infoOption (showVersion version) (
@@ -46,11 +46,11 @@ argParser = Config
     <*> switch (
         long "verbose"
         <> short 'v'
-        <> help "Show variable file summary"
+        <> help "Show file summary"
         )
     <*> strArgument (
-        metavar "VARFILE"
-        <> help "85x variable file"
+        metavar "FILE"
+        <> help "85x file"
         )
 
 argInfo = info (argParser <**> versionOpt <**> helper) (
@@ -58,9 +58,9 @@ argInfo = info (argParser <**> versionOpt <**> helper) (
     )
 
 processVarData :: Config -> TIVarData -> IO ()
-processVarData args (TIVarData tiVars) = do
+processVarData config (TIVarData tiVars) = do
     let vars = map readVariable tiVars
-    when (debug args) $ print vars
+    when (debug config) $ print vars
     let names = map (tiDecode.varName) tiVars
     let types = map (showType.idToType.varId) tiVars
     forM_ (zip3 names vars types) $ \(name,var,varType) -> do
@@ -68,10 +68,10 @@ processVarData args (TIVarData tiVars) = do
         printVariable var
 
 processBackupData :: Config -> TIBackupData -> IO ()
-processBackupData args tiBackup = do
+processBackupData config tiBackup = do
     let backupHdr = backupHeader tiBackup
     let data2Addr = hdrData2Addr backupHdr
-    let dataDisplay = if verbose args
+    let dataDisplay = if verbose config
         then print . foldr' hexify ""
         else print
     putStrLn $ pack $ "Data Section 1 (" <> show (data1Len tiBackup) <> "):"
@@ -83,21 +83,24 @@ processBackupData args tiBackup = do
     printVariableTable data2Addr (varTable tiBackup)
   where
     hexify :: Word8 -> ShowS
-    hexify w = 
+    hexify w =
         let pad = if w < 0xf then "0" else ""
         in \s' -> pad <> showHex w s'
 
 main :: IO ()
 main = do
-    args <- execParser argInfo
+    config <- execParser argInfo
 
-    tiFile <- readTIFile (programFile args)
+    tiFile <- readTIFile (filePath config)
 
-    when (showInfo args) $ do
+    when (showInfo config) $ do
         printFileSummary tiFile
         exitSuccess
 
+    when (verbose config) $ do
+        printFileSummary tiFile
+
     case tiData tiFile of
-        BackupData backup -> processBackupData args backup
-        VariableData vars -> processVarData args vars
+        BackupData backup -> processBackupData config backup
+        VariableData vars -> processVarData config vars
 
