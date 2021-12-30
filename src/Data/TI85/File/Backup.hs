@@ -9,7 +9,7 @@ import Data.ByteString (ByteString)
 import Data.Text (Text)
 import Data.Word (Word8,Word16)
 
-import Data.TI85.File.Variable (TIHeader, VarType)
+import Data.TI85.File.Variable (VarType)
 
 -- | An entry in the variable table.
 -- Note: the variable table is stored in
@@ -38,15 +38,13 @@ data TIBackupHeader = TIBackupHeader {
 
 -- | The top-level structure of a backup
 -- file.
-data TIBackupFile = TIBackupFile {
-    tiHeader :: TIHeader,
+data TIBackupData = TIBackupData {
     backupHeader :: TIBackupHeader,
     data1Len :: Word16,
     data1 :: ByteString,
     data2Len :: Word16,
     data2 :: ByteString,
     varTableLen :: Word16,
-    varTable :: VarTable,
-    backupChecksum :: Word16
+    varTable :: VarTable
     } deriving Show
 

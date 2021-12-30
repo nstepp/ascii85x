@@ -23,16 +23,34 @@ printVariableTable baseAddr vars = do
             "Type: " <> idName <> "\n" <>
             "Addr: " <> pack (showHex addr "") <> " (offset " <> (pack.show) offset <> ")\n"
 
-printFileSummary :: TIVarFile -> IO ()
+printFileSummary :: TIFile -> IO ()
 printFileSummary tiFile =
-    let hdr = header tiFile
-        check = checksum tiFile
+    let hdr = tiHeader tiFile
+        check = tiChecksum tiFile
         sig = decodeLatin1 $ hdrSig hdr
         comment = decodeLatin1 $ hdrComment hdr
-        vars = varsData tiFile
-    in putStrLn $
-        "\nTI Variable File <" <> sig <> ">\n" <>
-        "\"" <> comment <> "\"\n\n" <>
+        fileType = case tiData tiFile of
+            BackupData _ -> "Backup"
+            VariableData _ -> "Variable"
+    in do
+        putStrLn $
+            "\nTI " <> fileType <> " File <" <> sig <> ">\n" <>
+            "\"" <> comment <> "\"\n\n"
+        case tiData tiFile of
+            BackupData backupData -> printBackupSummary backupData
+            VariableData variableData -> printVariableSummary variableData
+
+printBackupSummary :: TIBackupData -> IO ()
+printBackupSummary tiBackup = do
+    let backupHdr = backupHeader tiBackup
+    let data2Addr = hdrData2Addr backupHdr
+    putStrLn $ pack $ "Data Section 1 (" <> show (data1Len tiBackup) <> "):"
+    putStrLn $ pack $ "Data Section 2 (" <> show (data2Len tiBackup) <> "):"
+    putStrLn $ pack $ "Data 2 Address: " <> showHex data2Addr "\n"
+
+printVariableSummary :: TIVarData -> IO ()
+printVariableSummary (TIVarData vars) =
+    putStrLn $
         "Variables:\n" <>
         intercalate "\n" (map varSummary vars)
   where

@@ -3,20 +3,19 @@
 -- Typically, code using this library will want to call `readVariableFile`
 -- on a file name.
 module Data.TI85.Parsers (
+    -- * General TI Files
+    readTIFile,
+    parseTIHeader,
+    parseTIFile,
     -- * Backup Files
-    -- ** High-level File IO
-    readTIBackupFile,
     -- ** High-level Parsers
-    parseTIBackupFile,
     parseTIBackupHeader,
     -- * Variable Files
     -- ** High-level File IO
-    readTIVarFile,
     readVariableFile,
     -- ** High-level Parsers
-    parseTIVarFile,
-    parseTIHeader,
-    parseTIVarData,
+    readVariable,
+    parseVariable,
     -- ** Lower-level Parsers
     parseProgram,
     parseTINumber,
@@ -36,6 +35,7 @@ import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Text.IO (putStrLn)
 import Data.Attoparsec.ByteString
+import Control.Applicative
 import Control.Monad (guard, when)
 
 import Data.TI85.Var
@@ -51,6 +51,30 @@ anyWord16 = do
     bytes <- take 2
     let val = bytes2Int bytes
     return (toEnum val)
+
+-- | Parse a genearl TI file, which might be
+-- a variable file or backup file.
+parseTIFile :: Parser TIFile
+parseTIFile = do
+    header <- parseTIHeader
+    contents <- 
+        BackupData <$> parseTIBackupData
+        <|> VariableData <$> parseTIVarData
+    checksum <- anyWord16
+    return $ TIFile {
+        tiHeader = header,
+        tiData = contents,
+        tiChecksum = checksum
+        }
+
+-- | Read a genearl TI file, which might be
+-- a variable file or backup file.
+readTIFile :: FilePath -> IO TIFile
+readTIFile fileName = do
+    contents <- BS.readFile fileName
+    let tiFile = parseOnly parseTIFile contents
+    either error return tiFile
+
 
 parseTIBackupHeader :: Parser TIBackupHeader
 parseTIBackupHeader = do
@@ -82,9 +106,8 @@ parseVarTableEntry = do
         entryName = name
         }
 
-parseTIBackupFile :: Parser TIBackupFile
-parseTIBackupFile = do
-    hdr <- parseTIHeader
+parseTIBackupData :: Parser TIBackupData
+parseTIBackupData = do
     backupHdr <- parseTIBackupHeader
     len1 <- anyWord16
     data1 <- take $ fromEnum len1
@@ -93,26 +116,15 @@ parseTIBackupFile = do
     len3 <- anyWord16
     data3 <- take $ fromEnum len3
     let vars = parseOnly (many' parseVarTableEntry) (BS.reverse data3)
-    chk <- anyWord16
-    return $ TIBackupFile {
-        tiHeader = hdr,
+    return $ TIBackupData {
         backupHeader = backupHdr,
         data1Len = len1,
         data1 = data1,
         data2Len = len2,
         data2 = data2,
         varTableLen = len3,
-        varTable = either error id vars,
-        backupChecksum = chk
+        varTable = either error id vars
         }
-
--- |Read the meta-data and structure of a variable file.
-readTIBackupFile :: FilePath -> IO TIBackupFile
-readTIBackupFile fileName = do
-    contents <- BS.readFile fileName
-    let backupFile = parseOnly parseTIBackupFile contents
-    either error return backupFile
-
 
 -- |The TI-85 header is common between backup files
 -- and variable files.
@@ -156,19 +168,8 @@ parseTIVar = do
        varData = var
        }
 
--- |A variable file contains a standard TI Header followed
--- by a sequence of variables.
-parseTIVarFile :: Parser TIVarFile
-parseTIVarFile = do
-    headerData <- parseTIHeader
-    contents <- many1' parseTIVar
-    chk <- anyWord16
-    takeByteString
-    return $ TIVarFile {
-        header = headerData,
-        varsData = contents,
-        checksum = chk
-        }
+parseTIVarData :: Parser TIVarData
+parseTIVarData = TIVarData <$> many1' parseTIVar
 
 -- |Programs are either plain text, ot encoded in a
 -- tokenized format. See "Data.TI85.Token" for the 
@@ -277,49 +278,44 @@ parseTINumber = do
 
 -- |Parser for the elements contained a variable file
 -- that has possibly more than one 
-parseTIVarData :: VarType -> Parser Variable
-parseTIVarData (VarValue _) = TIScalar <$> parseTINumber
-parseTIVarData (VarVector _) = do
+parseVariable :: VarType -> Parser Variable
+parseVariable (VarValue _) = TIScalar <$> parseTINumber
+parseVariable (VarVector _) = do
     alwaysOne <- anyWord8
     len <- fromEnum <$> anyWord8
     vals <- count len parseTINumber
     return $ TIVector vals
-parseTIVarData (VarList _) = do
+parseVariable (VarList _) = do
     len <- fromEnum <$> anyWord16
     vals <- count len parseTINumber
     return $ TIList vals
-parseTIVarData (VarMatrix _) = do
+parseVariable (VarMatrix _) = do
     numCols <- fromEnum <$> anyWord8
     numRows <- fromEnum <$> anyWord8
     vals <- count numRows (count numCols parseTINumber)
     return $ TIMatrix vals
-parseTIVarData (VarConstant _) = TIConstant <$> parseTINumber
-parseTIVarData VarEquation = do
+parseVariable (VarConstant _) = TIConstant <$> parseTINumber
+parseVariable VarEquation = do
     len <- fromEnum <$> anyWord16
     tokens <- parseTokenized len
     let tokenText = map (\(Token _ t) -> t) tokens
     let eqText = T.concat tokenText
     return $ TIEquation eqText
-parseTIVarData VarString = do
+parseVariable VarString = do
     len <- fromEnum <$> anyWord16
     TIString <$> parsePlaintext len
-parseTIVarData VarProgram = TIProgram <$> parseProgram
-parseTIVarData VarUnknown = return $ TIString "?"
-parseTIVarData _ = return $ TIString "(not implemented)"
-
--- |Read the meta-data and structure of a variable file.
-readTIVarFile :: FilePath -> IO TIVarFile
-readTIVarFile fileName = do
-    contents <- BS.readFile fileName
-    let varFile = parseOnly parseTIVarFile contents
-    either error return varFile
+parseVariable VarProgram = TIProgram <$> parseProgram
+parseVariable VarUnknown = return $ TIString "?"
+parseVariable _ = return $ TIString "(not implemented)"
 
 -- |Read the details of a variable file, returning both
 -- the raw contents and parsed variables.
-readVariableFile :: FilePath -> IO (TIVarFile, [Variable])
+readVariableFile :: FilePath -> IO (TIFile, [Variable])
 readVariableFile fileName = do
-    varFile <- readTIVarFile fileName
-    let dataList = varsData varFile
+    varFile <- readTIFile fileName
+    let dataList = case tiData varFile of
+                    BackupData _ -> error "Backup file, not variable file"
+                    VariableData (TIVarData v) -> v
     let vars = map readVariable dataList
     return (varFile,vars)
 
@@ -327,6 +323,6 @@ readVariableFile fileName = do
 readVariable :: TIVar -> Variable
 readVariable var =
     let varType = idToType (varId var)
-        parsedVar = parseOnly (parseTIVarData varType) (varData var)
+        parsedVar = parseOnly (parseVariable varType) (varData var)
     in either error id parsedVar
 
