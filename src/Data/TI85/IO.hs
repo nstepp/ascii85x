@@ -1,3 +1,5 @@
+-- | Various utilities for printing file and
+-- variable data.
 module Data.TI85.IO where
 
 import Prelude hiding (putStrLn)
@@ -15,7 +17,8 @@ import Data.TI85.File
 import Data.TI85.Parsers
 import Data.TI85.Var
 
-
+-- | A backup file contains a variable table that lists
+-- all user data, and indexes into the user memory area.
 printVariableTable :: Word16 -> VarTable -> IO ()
 printVariableTable baseAddr vars = do
     forM_ vars printEntry
@@ -27,6 +30,8 @@ printVariableTable baseAddr vars = do
             "Type: " <> idName <> "\n" <>
             "Addr: " <> pack (showHex addr "") <> " (offset " <> (pack.show) offset <> ")\n"
 
+-- | User the variable table to lookup variable data
+-- in user memory and display it.
 extractVariableTable :: Word16 -> TIBackupData -> IO ()
 extractVariableTable baseAddr tiBackup = do
     let table = varTable tiBackup
@@ -41,6 +46,7 @@ extractVariableTable baseAddr tiBackup = do
     hexify :: Word16 -> Text
     hexify w = pack (showHex w "")
 
+-- | Print file metadata.
 printFileSummary :: TIFile -> IO ()
 printFileSummary tiFile =
     let hdr = tiHeader tiFile
@@ -58,6 +64,7 @@ printFileSummary tiFile =
             BackupData backupData -> printBackupSummary backupData
             VariableData variableData -> printVariableSummary variableData
 
+-- | Print backup-specific top-level iniformation.
 printBackupSummary :: TIBackupData -> IO ()
 printBackupSummary tiBackup = do
     let backupHdr = backupHeader tiBackup
@@ -66,6 +73,7 @@ printBackupSummary tiBackup = do
     putStrLn $ pack $ "Data Section 2 (" <> show (data2Len tiBackup) <> "):"
     putStrLn $ pack $ "Data 2 Address: " <> showHex data2Addr "\n"
 
+-- | Print variable-specific metadata.
 printVariableSummary :: TIVarData -> IO ()
 printVariableSummary (TIVarData vars) =
     putStrLn $
@@ -79,5 +87,4 @@ printVariableSummary (TIVarData vars) =
         in  "\tName: " <> tiDecode (varName var) <> "\n" <>
             "\tType: " <> varIdType <> " (" <> varIdStr <> ")\n" <>
             "\tLength : " <> (pack.show.fromEnum) (varDataLen var) <> "\n"
-
 

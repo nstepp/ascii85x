@@ -30,6 +30,8 @@ data TIVar = TIVar {
     varData :: ByteString
     } deriving Show
 
+-- | The contents of a variable file (minus standard
+-- header and checksum.
 newtype TIVarData = TIVarData {
     varsData :: [TIVar]
     } deriving Show

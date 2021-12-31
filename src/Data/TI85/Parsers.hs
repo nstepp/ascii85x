@@ -1,6 +1,6 @@
 
 -- | This module contains the highest-level user-facing functions.
--- Typically, code using this library will want to call `readVariableFile`
+-- Typically, code using this library will want to call `readTIFile`
 -- on a file name.
 module Data.TI85.Parsers (
     -- * General TI Files
@@ -15,8 +15,6 @@ module Data.TI85.Parsers (
     readVarMem,
     extractVar,
     -- * Variable Files
-    -- ** High-level File IO
-    readVariableFile,
     -- ** High-level Parsers
     readVariable,
     parseVariable,
@@ -25,8 +23,6 @@ module Data.TI85.Parsers (
     parseTINumber,
     parseToken
     ) where
-
-import Debug.Trace
 
 import Prelude hiding (take,takeWhile,putStrLn)
 import Data.Char
@@ -80,7 +76,12 @@ readTIFile fileName = do
     let tiFile = parseOnly parseTIFile contents
     either error return tiFile
 
-
+-- | The backup header is a second header after
+-- the top-level file header (`TIFile`).
+-- It contains sizes of the three data sections
+-- and the location of user memory in RAM (which
+-- can use used with the variable table to look
+-- up variable data).
 parseTIBackupHeader :: Parser TIBackupHeader
 parseTIBackupHeader = do
     dataOffset <- string "\x09\x00"
@@ -317,31 +318,29 @@ parseUserMem :: Word16 -> VarTable -> Parser [Variable]
 parseUserMem baseAddr vars = do
     forM vars (extractVar baseAddr)
 
+-- | Parse a variable out of user memory, without
+-- consuming any input (hence "extract"). This allows
+-- many calls on the same memory. The base address
+-- is required for converting the variable addresses
+-- in the table to offsets into the user memory backup.
 extractVar :: Word16 -> VarTableEntry -> Parser Variable
 extractVar baseAddr (VarTableEntry idNum addr _ name) = do
     let offset = fromEnum $ addr - baseAddr
     lookAhead $ take offset *> parseVariable (idToType idNum)
 
+-- | Given a bytestring of user memory, look up the variable
+-- table entry and return a `Variable`.
 readVarMem :: Word16 -> VarTableEntry -> ByteString -> Variable
 readVarMem baseAddr entry userData =
     let var = parseOnly (extractVar baseAddr entry) userData
     in either error id var
 
+-- | Read all ofthe variables contained in a user memory
+-- backup, according to a variable table.
 readUserMem :: Word16 -> VarTable -> ByteString -> [Variable]
 readUserMem baseAddr table userData =
     let vars = parseOnly (parseUserMem baseAddr table) userData
     in either error id vars
-
--- |Read the details of a variable file, returning both
--- the raw contents and parsed variables.
-readVariableFile :: FilePath -> IO (TIFile, [Variable])
-readVariableFile fileName = do
-    varFile <- readTIFile fileName
-    let dataList = case tiData varFile of
-                    BackupData _ -> error "Backup file, not variable file"
-                    VariableData (TIVarData v) -> v
-    let vars = map readVariable dataList
-    return (varFile,vars)
 
 -- |Convert raw variable data into a Variable.
 readVariable :: TIVar -> Variable

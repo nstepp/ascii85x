@@ -41,6 +41,10 @@ data TIFileData = BackupData TIBackupData
     | VariableData TIVarData
     deriving Show
 
+-- | All TI Link files have a common header and
+-- checksum, which a data section that differs
+-- between backup and variable type.
+-- See `TIFileData`.
 data TIFile = TIFile {
     tiHeader :: TIHeader,
     tiData :: TIFileData,
