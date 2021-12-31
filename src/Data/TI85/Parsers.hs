@@ -29,7 +29,7 @@ import Data.Char
 import Data.Bits
 import Data.Word
 import Data.Array.Unboxed (Array, UArray, array, listArray, (!))
-import Data.ByteString (ByteString)
+import Data.ByteString (ByteString, foldr')
 import qualified Data.ByteString as BS
 import Data.Text (Text)
 import qualified Data.Text as T
@@ -58,17 +58,28 @@ anyWord16 = do
 parseTIFile :: Parser TIFile
 parseTIFile = do
     header <- parseTIHeader
+    (checksum, calcSum) <- lookAhead (calculateSum $ hdrDataLen header)
+
+    when (calcSum /= checksum) (error "Checkum check failed")
+
     contents <- 
         BackupData <$> parseTIBackupData
         <|> VariableData <$> parseTIVarData
-    checksum <- anyWord16
+
     return $ TIFile {
         tiHeader = header,
         tiData = contents,
         tiChecksum = checksum
         }
+  where
+    calculateSum :: Word16 -> Parser (Word16,Word16)
+    calculateSum len = do
+        bytes <- take (fromEnum len)
+        let sum = foldr' (\w s -> fromEnum w + s) (0::Int) bytes
+        checksum <- anyWord16
+        return (checksum, toEnum $ sum .&. 0xffff)
 
--- | Read a genearl TI file, which might be
+-- | Read a general TI file, which might be
 -- a variable file or backup file.
 readTIFile :: FilePath -> IO TIFile
 readTIFile fileName = do
