@@ -1,13 +1,15 @@
 module Main where
 
-import Prelude hiding (putStrLn)
+import Prelude hiding (putStrLn,take,drop)
 import Control.Monad
-import Data.Text (Text, pack, intercalate, unpack)
-import Data.Text.Encoding (decodeUtf8, decodeLatin1)
+import Data.Text (pack)
 import Data.Text.IO (putStrLn)
-import Data.ByteString (ByteString)
+import Data.ByteString (foldr',take,drop)
+import Data.Word
 import Data.Version
+import Numeric (showHex)
 
+import Data.Attoparsec.ByteString (parseOnly)
 import Options.Applicative
 
 import Data.TI85
@@ -19,7 +21,7 @@ data Config = Config {
     showInfo :: Bool,
     debug :: Bool,
     verbose :: Bool,
-    programFile :: FilePath
+    filePath :: FilePath
     }
 
 versionOpt = infoOption (showVersion version) (
@@ -43,54 +45,65 @@ argParser = Config
     <*> switch (
         long "verbose"
         <> short 'v'
-        <> help "Show variable file summary"
+        <> help "Show file summary"
         )
     <*> strArgument (
-        metavar "VARFILE"
-        <> help "85x variable file"
+        metavar "FILE"
+        <> help "85x file"
         )
 
 argInfo = info (argParser <**> versionOpt <**> helper) (
     fullDesc <> progDesc "Convert TI-85 variable files to text"
     )
 
-tiFileSummary :: TIVarFile -> Text
-tiFileSummary tiFile =
-    let hdr = Data.TI85.header tiFile
-        check = checksum tiFile
-        sig = decodeLatin1 $ hdrSig hdr
-        comment = decodeLatin1 $ hdrComment hdr
-        vars = varsData tiFile
-    in 
-        "\nTI Variable File <" <> sig <> ">\n" <>
-        "\"" <> comment <> "\"\n\n" <>
-        "Variables:\n" <>
-        intercalate "\n" (map varSummary vars)
-  where
-    varSummary :: TIVar -> Text
-    varSummary var =
-        let varIdStr = (pack.show.fromEnum) (varId var)
-            varIdType = (showType.idToType) (varId var)
-        in  "\tName: " <> tiDecode (varName var) <> "\n" <>
-            "\tType: " <> varIdType <> " (" <> varIdStr <> ")\n" <>
-            "\tLength : " <> (pack.show.fromEnum) (varDataLen var) <> "\n"
-
-main :: IO ()
-main = do
-    args <- execParser argInfo
-
-    when (showInfo args) $ do
-        varFile <- readTIVarFile (programFile args)
-        putStrLn (tiFileSummary varFile)
-        exitSuccess
-
-    (varFile, vars) <- readVariableFile (programFile args)
-    when (verbose args) $ putStrLn (tiFileSummary varFile)
-    when (debug args) $ print vars
-    let tiVars = varsData varFile
+processVarData :: Config -> TIVarData -> IO ()
+processVarData config (TIVarData tiVars) = do
+    let vars = map readVariable tiVars
+    when (debug config) $ print vars
     let names = map (tiDecode.varName) tiVars
     let types = map (showType.idToType.varId) tiVars
     forM_ (zip3 names vars types) $ \(name,var,varType) -> do
         putStrLn $ "\n" <> varType <> " \"" <> name <> "\":"
         printVariable var
+
+processBackupData :: Config -> TIBackupData -> IO ()
+processBackupData config tiBackup = do
+    let backupHdr = backupHeader tiBackup
+    let data2Addr = hdrData2Addr backupHdr
+    let dataDisplay = if verbose config
+        then print . foldr' hexify ""
+        else print
+    putStrLn $ pack $ "Data Section 1 (" <> show (data1Len tiBackup) <> "):"
+    dataDisplay (data1 tiBackup)
+    putStrLn $ pack $ "Data Section 2 (" <> show (data2Len tiBackup) <> "):"
+    dataDisplay (data2 tiBackup)
+    putStrLn $ pack $ "Data 2 Address: " <> showHex data2Addr "\n"
+    putStrLn $ pack $ "Variable Table (" <> show (varTableLen tiBackup) <> "):"
+    printVariableTable data2Addr (varTable tiBackup)
+
+    when (verbose config) $ do
+        extractVariableTable data2Addr tiBackup
+
+  where
+    hexify :: Word8 -> ShowS
+    hexify w =
+        let pad = if w < 0xf then "0" else ""
+        in \s' -> pad <> showHex w s'
+
+main :: IO ()
+main = do
+    config <- execParser argInfo
+
+    tiFile <- readTIFile (filePath config)
+
+    when (showInfo config) $ do
+        printFileSummary tiFile
+        exitSuccess
+
+    when (verbose config) $ do
+        printFileSummary tiFile
+
+    case tiData tiFile of
+        BackupData backup -> processBackupData config backup
+        VariableData vars -> processVarData config vars
 

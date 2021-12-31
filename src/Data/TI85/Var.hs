@@ -28,7 +28,7 @@ data Program = PlainText Text
 data TINumber = TIReal Double | TIComplex Double Double deriving Show
 
 -- | Variables have a type and type-specific data.
--- See also `Data.TI85.VarFile.VarType`.
+-- See also `Data.TI85.File.Variable.VarType`.
 data Variable =
     TIScalar TINumber
     | TIVector [TINumber]

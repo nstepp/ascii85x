@@ -2,11 +2,10 @@
 -- | Behind "Data.TI85.Parsers" this is the next highest
 -- level module. This module defines the structure of a
 -- TI-85 variable file.
-module Data.TI85.VarFile (
+module Data.TI85.File.Variable (
     -- * Types
-    TIHeader(..),
-    TIVarFile(..),
     TIVar(..),
+    TIVarData(..),
     VarField(..),
     VarType(..),
     -- * Utilities
@@ -19,32 +18,6 @@ import Data.ByteString (ByteString)
 import Data.Text (Text)
 import Data.Word (Word8,Word16)
 
--- | The TI-85 header is common between backup files
--- and variable files.
---
--- +--------+---+---------------------------------+
--- | 8 Byte | 3 | 42 Byte                         |
--- +========+===+=================================+
--- |**TI85**|xyz| Comment                         |
--- +--------+---+---------------------------------+
---
--- where @xyz@ is always @0x1a,0x0c,0x00@.
-data TIHeader = TIHeader {
-    hdrSig :: ByteString, -- 8 bytes
-    hdrSig2 :: ByteString, -- 3 bytes
-    hdrComment :: ByteString, -- 42 bytes
-    hdrDataLen :: Word16
-    } deriving Show
-
--- | The top-level structure of a variable
--- file, containing a header, variable list,
--- and a checksum.
-data TIVarFile = TIVarFile {
-    header :: TIHeader,
-    varsData :: [TIVar],
-    checksum :: Word16
-    } deriving Show
-
 -- | The structure of a single variable.
 -- For the meaning of variable IDs, see `idToType`.
 data TIVar = TIVar {
@@ -55,6 +28,12 @@ data TIVar = TIVar {
     varName :: ByteString,
     varDataLen :: Word16,
     varData :: ByteString
+    } deriving Show
+
+-- | The contents of a variable file (minus standard
+-- header and checksum.
+newtype TIVarData = TIVarData {
+    varsData :: [TIVar]
     } deriving Show
 
 -- | Scalar values can either be real or complex.

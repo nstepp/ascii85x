@@ -1,40 +1,48 @@
 
 -- | This module contains the highest-level user-facing functions.
--- Typically, code using this library will want to call `readVariableFile`
+-- Typically, code using this library will want to call `readTIFile`
 -- on a file name.
 module Data.TI85.Parsers (
-    -- * High-level File IO
-    readTIVarFile,
-    readVariableFile,
-    -- * High-level Parsers
-    parseTIVarFile,
+    -- * General TI Files
+    readTIFile,
     parseTIHeader,
-    parseTIVarData,
-    -- * Lower-level Parsers
+    parseTIFile,
+    -- * Backup Files
+    -- ** High-level Parsers
+    parseTIBackupHeader,
+    readUserMem,
+    -- ** Lower-level Parsers
+    readVarMem,
+    extractVar,
+    -- * Variable Files
+    -- ** High-level Parsers
+    readVariable,
+    parseVariable,
+    -- ** Lower-level Parsers
     parseProgram,
     parseTINumber,
     parseToken
     ) where
-
-import Debug.Trace
 
 import Prelude hiding (take,takeWhile,putStrLn)
 import Data.Char
 import Data.Bits
 import Data.Word
 import Data.Array.Unboxed (Array, UArray, array, listArray, (!))
-import Data.ByteString (ByteString)
+import Data.ByteString (ByteString, foldr')
 import qualified Data.ByteString as BS
 import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Text.IO (putStrLn)
 import Data.Attoparsec.ByteString
-import Control.Monad (guard)
+import Data.Attoparsec.Combinator (lookAhead)
+import Control.Applicative
+import Control.Monad (guard, when, forM)
 
 import Data.TI85.Var
-import Data.TI85.VarFile
 import Data.TI85.Encoding
 import Data.TI85.Token
+import Data.TI85.File
 
 bytes2Int :: ByteString -> Int
 bytes2Int = BS.foldr' (\w x -> 256*x + fromEnum w) 0
@@ -44,6 +52,96 @@ anyWord16 = do
     bytes <- take 2
     let val = bytes2Int bytes
     return (toEnum val)
+
+-- | Parse a genearl TI file, which might be
+-- a variable file or backup file.
+parseTIFile :: Parser TIFile
+parseTIFile = do
+    header <- parseTIHeader
+    (checksum, calcSum) <- lookAhead (calculateSum $ hdrDataLen header)
+
+    when (calcSum /= checksum) (error "Checkum check failed")
+
+    contents <- 
+        BackupData <$> parseTIBackupData
+        <|> VariableData <$> parseTIVarData
+
+    return $ TIFile {
+        tiHeader = header,
+        tiData = contents,
+        tiChecksum = checksum
+        }
+  where
+    calculateSum :: Word16 -> Parser (Word16,Word16)
+    calculateSum len = do
+        bytes <- take (fromEnum len)
+        let sum = foldr' (\w s -> fromEnum w + s) (0::Int) bytes
+        checksum <- anyWord16
+        return (checksum, toEnum $ sum .&. 0xffff)
+
+-- | Read a general TI file, which might be
+-- a variable file or backup file.
+readTIFile :: FilePath -> IO TIFile
+readTIFile fileName = do
+    contents <- BS.readFile fileName
+    let tiFile = parseOnly parseTIFile contents
+    either error return tiFile
+
+-- | The backup header is a second header after
+-- the top-level file header (`TIFile`).
+-- It contains sizes of the three data sections
+-- and the location of user memory in RAM (which
+-- can use used with the variable table to look
+-- up variable data).
+parseTIBackupHeader :: Parser TIBackupHeader
+parseTIBackupHeader = do
+    dataOffset <- string "\x09\x00"
+    len1 <- anyWord16
+    typeId <- word8 0x1d
+    len2 <- anyWord16
+    len3 <- anyWord16
+    addr <- anyWord16
+    return $ TIBackupHeader {
+        hdrDataLenOffset = 0x9,
+        hdrData1Len = len1,
+        hdrTypeID = typeId,
+        hdrData2Len = len2,
+        hdrData3Len = len2,
+        hdrData2Addr = addr
+        }
+
+parseVarTableEntry :: Parser VarTableEntry
+parseVarTableEntry = do
+    entId <- anyWord8
+    entAddr <- anyWord16
+    len <- anyWord8
+    name <- take (fromEnum len)
+    return $ VarTableEntry {
+        entryId = entId,
+        entryAddr = entAddr,
+        entryNameLen = len,
+        entryName = name
+        }
+
+parseTIBackupData :: Parser TIBackupData
+parseTIBackupData = do
+    backupHdr <- parseTIBackupHeader
+    len1 <- anyWord16
+    data1 <- take $ fromEnum len1
+    len2 <- anyWord16
+    data2 <- take $ fromEnum len2
+    len3 <- anyWord16
+    data3 <- take $ fromEnum len3
+    let vars = parseOnly (many' parseVarTableEntry) (BS.reverse data3)
+    return $ TIBackupData {
+        backupHeader = backupHdr,
+        data1Len = len1,
+        data1 = data1,
+        data2Len = len2,
+        data2 = data2,
+        varTableLen = len3,
+        varTable = either error id vars
+        }
 
 -- |The TI-85 header is common between backup files
 -- and variable files.
@@ -87,19 +185,8 @@ parseTIVar = do
        varData = var
        }
 
--- |A variable file contains a standard TI Header followed
--- by a sequence of variables.
-parseTIVarFile :: Parser TIVarFile
-parseTIVarFile = do
-    headerData <- parseTIHeader
-    contents <- many1' parseTIVar
-    chk <- anyWord16
-    takeByteString
-    return $ TIVarFile {
-        header = headerData,
-        varsData = contents,
-        checksum = chk
-        }
+parseTIVarData :: Parser TIVarData
+parseTIVarData = TIVarData <$> many1' parseTIVar
 
 -- |Programs are either plain text, ot encoded in a
 -- tokenized format. See "Data.TI85.Token" for the 
@@ -208,56 +295,68 @@ parseTINumber = do
 
 -- |Parser for the elements contained a variable file
 -- that has possibly more than one 
-parseTIVarData :: VarType -> Parser Variable
-parseTIVarData (VarValue _) = TIScalar <$> parseTINumber
-parseTIVarData (VarVector _) = do
+parseVariable :: VarType -> Parser Variable
+parseVariable (VarValue _) = TIScalar <$> parseTINumber
+parseVariable (VarVector _) = do
     alwaysOne <- anyWord8
     len <- fromEnum <$> anyWord8
     vals <- count len parseTINumber
     return $ TIVector vals
-parseTIVarData (VarList _) = do
+parseVariable (VarList _) = do
     len <- fromEnum <$> anyWord16
     vals <- count len parseTINumber
     return $ TIList vals
-parseTIVarData (VarMatrix _) = do
+parseVariable (VarMatrix _) = do
     numCols <- fromEnum <$> anyWord8
     numRows <- fromEnum <$> anyWord8
     vals <- count numRows (count numCols parseTINumber)
     return $ TIMatrix vals
-parseTIVarData (VarConstant _) = TIConstant <$> parseTINumber
-parseTIVarData VarEquation = do
+parseVariable (VarConstant _) = TIConstant <$> parseTINumber
+parseVariable VarEquation = do
     len <- fromEnum <$> anyWord16
     tokens <- parseTokenized len
     let tokenText = map (\(Token _ t) -> t) tokens
     let eqText = T.concat tokenText
     return $ TIEquation eqText
-parseTIVarData VarString = do
+parseVariable VarString = do
     len <- fromEnum <$> anyWord16
     TIString <$> parsePlaintext len
-parseTIVarData VarProgram = TIProgram <$> parseProgram
-parseTIVarData VarUnknown = return $ TIString "?"
-parseTIVarData _ = return $ TIString "(not implemented)"
+parseVariable VarProgram = TIProgram <$> parseProgram
+parseVariable VarUnknown = return $ TIString "?"
+parseVariable _ = return $ TIString "(not implemented)"
 
--- |Read the meta-data and structure of a variable file.
-readTIVarFile :: FilePath -> IO TIVarFile
-readTIVarFile fileName = do
-    contents <- BS.readFile fileName
-    let varFile = parseOnly parseTIVarFile contents
-    either error return varFile
+parseUserMem :: Word16 -> VarTable -> Parser [Variable]
+parseUserMem baseAddr vars = do
+    forM vars (extractVar baseAddr)
 
--- |Read the details of a variable file, returning both
--- the raw contents and parsed variables.
-readVariableFile :: FilePath -> IO (TIVarFile, [Variable])
-readVariableFile fileName = do
-    varFile <- readTIVarFile fileName
-    let dataList = varsData varFile
-    let vars = map readVariable dataList
-    return (varFile,vars)
+-- | Parse a variable out of user memory, without
+-- consuming any input (hence "extract"). This allows
+-- many calls on the same memory. The base address
+-- is required for converting the variable addresses
+-- in the table to offsets into the user memory backup.
+extractVar :: Word16 -> VarTableEntry -> Parser Variable
+extractVar baseAddr (VarTableEntry idNum addr _ name) = do
+    let offset = fromEnum $ addr - baseAddr
+    lookAhead $ take offset *> parseVariable (idToType idNum)
+
+-- | Given a bytestring of user memory, look up the variable
+-- table entry and return a `Variable`.
+readVarMem :: Word16 -> VarTableEntry -> ByteString -> Variable
+readVarMem baseAddr entry userData =
+    let var = parseOnly (extractVar baseAddr entry) userData
+    in either error id var
+
+-- | Read all ofthe variables contained in a user memory
+-- backup, according to a variable table.
+readUserMem :: Word16 -> VarTable -> ByteString -> [Variable]
+readUserMem baseAddr table userData =
+    let vars = parseOnly (parseUserMem baseAddr table) userData
+    in either error id vars
 
 -- |Convert raw variable data into a Variable.
 readVariable :: TIVar -> Variable
 readVariable var =
     let varType = idToType (varId var)
-        parsedVar = parseOnly (parseTIVarData varType) (varData var)
+        parsedVar = parseOnly (parseVariable varType) (varData var)
     in either error id parsedVar
 
