@@ -263,9 +263,9 @@ showDiffEqSettings settings =
 -- | Saved window settings.
 showWinSettings :: SavedWinSettings -> Text
 showWinSettings settings =
-    "\nzThetaMin: " <> showNumber (zThetaMin settings)
-    <> "\nzThetaMax: " <> showNumber (zThetaMax settings)
-    <> "\nzThetaStep: " <> showNumber (zThetaStep settings)
+    "\nzθMin: " <> showNumber (zThetaMin settings)
+    <> "\nzθMax: " <> showNumber (zThetaMax settings)
+    <> "\nzθStep: " <> showNumber (zThetaStep settings)
     <> "\nztPlot: " <> showNumber (ztPlot settings)
     <> "\nztMin: " <> showNumber (ztMin settings)
     <> "\nztMax: " <> showNumber (ztMax settings)
