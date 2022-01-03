@@ -35,14 +35,14 @@ _bmSizeBytes = 1008
 emptyBitmap :: TIBitmap
 emptyBitmap = TIBitmap (BS.replicate _bmSizeBytes 0x0)
 
--- | Create a bitmap from a packed bytestring. If the data
+-- | Create a bitmap from a packed `ByteString`. If the data
 -- is the wrong size, returns `Nothing`.
 fromBytes :: ByteString -> Maybe TIBitmap
 fromBytes bytes = if BS.length bytes == 1008
     then Just (TIBitmap bytes)
     else Nothing
 
--- | Extract the raw bytestring from a bitmap.
+-- | Extract the raw `ByteString` from a bitmap.
 toBytes :: TIBitmap -> ByteString
 toBytes (TIBitmap bytes) = bytes
 
@@ -57,14 +57,14 @@ screenColorMap :: Word8 -> Pixel8
 screenColorMap 0x0 = 0xc6
 screenColorMap _ = 0x39
 
--- Convert a bytestring, where each bit represents a pixel into
+-- Convert a `ByteString`, where each bit represents a pixel into
 -- a vector of pixels suitable for use in a `DynamicImage`.
 -- Bits are mapped to pixels using a vaguely calculator-like
 -- color map (light gray background, dark gray foreground).
 bytesToPixels :: ByteString -> Vector Pixel8
 bytesToPixels =  fromList . map screenColorMap . BS.unpack . BS.concatMap explodeWord
 
--- Create an image out of a packed bytestring.
+-- Create an image out of a packed `ByteString`.
 -- See `bytesToPixels`
 bytesToImage :: ByteString -> Int -> Int -> DynamicImage
 bytesToImage bytes width height =
@@ -73,7 +73,7 @@ bytesToImage bytes width height =
 
 -- | Create a text-based representation of a picture.
 -- Background pixels are rendered as spaces, while
--- foreground are rendered as full block glyphs.
+-- foreground are rendered as full block glyphs (█).
 showAsciiArt :: TIBitmap -> Text
 showAsciiArt (TIBitmap bytes) =
     let bits = BS.concatMap explodeWord bytes

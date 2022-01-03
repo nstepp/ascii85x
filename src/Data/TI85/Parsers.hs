@@ -54,7 +54,7 @@ anyWord16 = do
     let val = bytes2Int bytes
     return (toEnum val)
 
--- | Parse a genearl TI file, which might be
+-- | Parse a general TI file, which might be
 -- a variable file or backup file.
 parseTIFile :: Parser TIFile
 parseTIFile = do
