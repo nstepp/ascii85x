@@ -40,6 +40,7 @@ import Control.Applicative
 import Control.Monad (guard, when, forM)
 
 import Data.TI85.Var
+import Data.TI85.Var.Pic
 import Data.TI85.Encoding
 import Data.TI85.Token
 import Data.TI85.File
@@ -53,7 +54,7 @@ anyWord16 = do
     let val = bytes2Int bytes
     return (toEnum val)
 
--- | Parse a genearl TI file, which might be
+-- | Parse a general TI file, which might be
 -- a variable file or backup file.
 parseTIFile :: Parser TIFile
 parseTIFile = do
@@ -293,6 +294,15 @@ parseTINumber = do
             else value
         return (flags,signedValue)
 
+parsePicture :: Parser TIBitmap
+parsePicture = do
+    word8 0xf0
+    word8 0x03
+    pic <- take 1008
+    case fromBytes pic of
+        Just tiPic -> return tiPic
+        Nothing -> fail "Wrong size of picture bitmap"
+
 -- |Parser for the elements contained a variable file
 -- that has possibly more than one 
 parseVariable :: VarType -> Parser Variable
@@ -322,6 +332,7 @@ parseVariable VarString = do
     len <- fromEnum <$> anyWord16
     TIString <$> parsePlaintext len
 parseVariable VarProgram = TIProgram <$> parseProgram
+parseVariable VarPicture = TIPicture <$> parsePicture
 parseVariable VarUnknown = return $ TIString "?"
 parseVariable _ = return $ TIString "(not implemented)"
 

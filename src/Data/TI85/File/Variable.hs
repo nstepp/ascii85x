@@ -1,7 +1,5 @@
 
--- | Behind "Data.TI85.Parsers" this is the next highest
--- level module. This module defines the structure of a
--- TI-85 variable file.
+-- | This module defines the structure of a TI-85 variable file.
 module Data.TI85.File.Variable (
     -- * Types
     TIVar(..),
@@ -31,7 +29,7 @@ data TIVar = TIVar {
     } deriving Show
 
 -- | The contents of a variable file (minus standard
--- header and checksum.
+-- header and checksum).
 newtype TIVarData = TIVarData {
     varsData :: [TIVar]
     } deriving Show

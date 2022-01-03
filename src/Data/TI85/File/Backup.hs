@@ -26,7 +26,7 @@ data VarTableEntry = VarTableEntry {
 type VarTable = [VarTableEntry]
 
 -- | Backup-specific header. This header comes after
--- the more general `TIHeader`.
+-- the more general `Data.TI85.File.TIHeader`.
 data TIBackupHeader = TIBackupHeader {
     hdrDataLenOffset :: Word16, -- Always 9
     hdrData1Len :: Word16,

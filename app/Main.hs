@@ -2,12 +2,13 @@ module Main where
 
 import Prelude hiding (putStrLn,take,drop)
 import Control.Monad
-import Data.Text (pack)
+import Data.Text (pack,unpack)
 import Data.Text.IO (putStrLn)
 import Data.ByteString (foldr',take,drop)
 import Data.Word
 import Data.Version
 import Numeric (showHex)
+import System.Exit (exitSuccess)
 
 import Data.Attoparsec.ByteString (parseOnly)
 import Options.Applicative
@@ -15,12 +16,11 @@ import Options.Applicative
 import Data.TI85
 import Paths_ascii85x (version)
 
-import System.Exit (exitSuccess)
-
 data Config = Config {
     showInfo :: Bool,
     debug :: Bool,
     verbose :: Bool,
+    imgOut :: Maybe FilePath,
     filePath :: FilePath
     }
 
@@ -47,6 +47,12 @@ argParser = Config
         <> short 'v'
         <> help "Show file summary"
         )
+    <*> optional (strOption (
+        long "image-dir"
+        <> short 'I'
+        <> metavar "DIR"
+        <> help "Output PNG versions of PIC variables to this directory"
+        ))
     <*> strArgument (
         metavar "FILE"
         <> help "85x file"
@@ -65,6 +71,22 @@ processVarData config (TIVarData tiVars) = do
     forM_ (zip3 names vars types) $ \(name,var,varType) -> do
         putStrLn $ "\n" <> varType <> " \"" <> name <> "\":"
         printVariable var
+
+        -- Check for a picture variable, and write
+        -- to an image if configured to do so
+        let pic = case var of
+                    TIPicture bitmap -> Just bitmap
+                    _ -> Nothing
+
+        -- The following completes only when the variable is
+        -- a picture and when the image path option is set
+        sequence_ $ do
+            bitmap <- pic
+            imgPath <- imgOut config
+            return $ do
+                let imgFile = imgPath <> "/" <> unpack name <> ".png"
+                writePicPng imgFile bitmap
+                putStrLn $ "Saved " <> name <> " to " <> pack imgFile
 
 processBackupData :: Config -> TIBackupData -> IO ()
 processBackupData config tiBackup = do

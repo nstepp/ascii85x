@@ -2,8 +2,10 @@
 -- | A collection of types and utilities for dealing with
 -- TI Link backup files.
 module Data.TI85.File (
+    -- * Re-exported modules
     module Data.TI85.File.Variable,
     module Data.TI85.File.Backup,
+    -- * Types
     TIHeader(..),
     TIFileData(..),
     TIFile(..)
@@ -33,17 +35,18 @@ data TIHeader = TIHeader {
     } deriving Show
 
 -- | There are two possible file formats
--- * Variable files contain one or more variables,
+--
+-- - Variable files contain one or more variables,
 --   encoded in a variable-specific way.
--- * Backup files contain memory dumps, which also
+-- - Backup files contain memory dumps, which also
 --   include variable data in a raw form.
 data TIFileData = BackupData TIBackupData
     | VariableData TIVarData
     deriving Show
 
 -- | All TI Link files have a common header and
--- checksum, which a data section that differs
--- between backup and variable type.
+-- checksum, with a data section that differs
+-- between backup and variable types.
 -- See `TIFileData`.
 data TIFile = TIFile {
     tiHeader :: TIHeader,

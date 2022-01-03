@@ -7,6 +7,7 @@ import Prelude hiding (concat, putStrLn)
 import Data.Text (Text, concat, pack, intercalate)
 import Data.Text.IO (putStrLn)
 import Data.TI85.Token (TokenDef)
+import Data.TI85.Var.Pic
 
 -- * Types
 
@@ -38,6 +39,7 @@ data Variable =
     | TIEquation Text
     | TIString Text
     | TIProgram Program
+    | TIPicture TIBitmap
     deriving Show
 
 -- * Text Conversion
@@ -74,6 +76,7 @@ showVariable (TIConstant tn) = showNumber tn
 showVariable (TIEquation txt) = txt
 showVariable (TIString txt) = txt
 showVariable (TIProgram pro) = showProgram pro
+showVariable (TIPicture pic) = showAsciiArt pic
 
 -- * IO
 
