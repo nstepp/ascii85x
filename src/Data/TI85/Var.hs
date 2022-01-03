@@ -58,6 +58,9 @@ data Program = PlainText Text
 -- | Numerical variables are either Real or Complex.
 data TINumber = TIReal Double | TIComplex Double Double deriving Show
 
+-- ** Window Settings
+
+-- | Function window settings
 data FuncSettings = FuncSettings {
     fXMin :: TINumber,
     fXMax :: TINumber,
@@ -68,6 +71,7 @@ data FuncSettings = FuncSettings {
     }
     deriving Show
 
+-- | Polar window settings
 data PolarSettings = PolarSettings {
     polThetaMin :: TINumber,
     polThetaMax :: TINumber,
@@ -81,6 +85,7 @@ data PolarSettings = PolarSettings {
     }
     deriving Show
 
+-- | Parametric window settings
 data ParamSettings = ParamSettings {
     parTMin :: TINumber,
     parTMax :: TINumber,
@@ -94,6 +99,8 @@ data ParamSettings = ParamSettings {
     }
     deriving Show
 
+-- | Differential equation axes can come
+-- with an index (e.g. Q1-Q9).
 data AxisInd = Axis0
     | Axis1
     | Axis2
@@ -106,11 +113,13 @@ data AxisInd = Axis0
     | Axis9
     deriving (Show,Eq,Enum)
 
+-- | Differential equation axis type
 data DiffEqAxis = AxisT
     | AxisQ AxisInd
     | AxisQ' AxisInd
     deriving Show
 
+-- | Differential equation window settings
 data DiffEqSettings = DiffEqSettings {
     diffTol :: TINumber,
     diffTPlot :: TINumber,
@@ -183,6 +192,8 @@ showProgram (PlainText progText) = progText
 showProgram (Tokenized tokens) =
     foldMap (\(Token _ t) -> t) tokens
 
+-- ** Window Settings
+
 -- | Function window settings.
 showFuncSettings :: FuncSettings -> Text
 showFuncSettings settings =
@@ -206,7 +217,7 @@ showPolarSettings settings =
     <> "\nyMax: " <> showNumber (polYMax settings)
     <> "\nyScl: " <> showNumber (polYScl settings)
 
--- | Polar window settings.
+-- | Parametric window settings.
 showParamSettings :: ParamSettings -> Text
 showParamSettings settings =
     "\ntMin: " <> showNumber (parTMin settings)
