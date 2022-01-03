@@ -28,6 +28,76 @@ data Program = PlainText Text
 -- | Numerical variables are either Real or Complex.
 data TINumber = TIReal Double | TIComplex Double Double deriving Show
 
+data FuncSettings = FuncSettings {
+    fXMin :: TINumber,
+    fXMax :: TINumber,
+    fXScl :: TINumber,
+    fYMin :: TINumber,
+    fYMax :: TINumber,
+    fYScl :: TINumber
+    }
+    deriving Show
+
+data PolarSettings = PolarSettings {
+    polThetaMin :: TINumber,
+    polThetaMax :: TINumber,
+    polThetaStep :: TINumber,
+    polXMin :: TINumber,
+    polXMax :: TINumber,
+    polXScl :: TINumber,
+    polYMin :: TINumber,
+    polYMax :: TINumber,
+    polYScl :: TINumber
+    }
+    deriving Show
+
+data ParamSettings = ParamSettings {
+    parTMin :: TINumber,
+    parTMax :: TINumber,
+    parTStep :: TINumber,
+    parXMin :: TINumber,
+    parXMax :: TINumber,
+    parXScl :: TINumber,
+    parYMin :: TINumber,
+    parYMax :: TINumber,
+    parYScl :: TINumber
+    }
+    deriving Show
+
+data AxisInd = Axis0
+    | Axis1
+    | Axis2
+    | Axis3
+    | Axis4
+    | Axis5
+    | Axis6
+    | Axis7
+    | Axis8
+    | Axis9
+    deriving (Show,Eq,Enum)
+
+data DiffEqAxis = AxisT
+    | AxisQ AxisInd
+    | AxisQ' AxisInd
+    deriving Show
+
+data DiffEqSettings = DiffEqSettings {
+    diffTol :: TINumber,
+    diffTPlot :: TINumber,
+    diffTMin :: TINumber,
+    diffTMax :: TINumber,
+    diffTStep :: TINumber,
+    diffXMin :: TINumber,
+    diffXMax :: TINumber,
+    diffXScl :: TINumber,
+    diffYMin :: TINumber,
+    diffYMax :: TINumber,
+    diffYScl :: TINumber,
+    diffXAxis :: DiffEqAxis,
+    diffYAxis :: DiffEqAxis
+    }
+    deriving Show
+
 -- | Saved window settings, used for ZRCL.
 data SavedWinSettings = SavedWinSettings {
     zThetaMin :: TINumber,
@@ -58,6 +128,10 @@ data Variable =
     | TIString Text
     | TIProgram Program
     | TIPicture TIBitmap
+    | TIFuncSettings FuncSettings
+    | TIPolarSettings PolarSettings
+    | TIParamSettings ParamSettings
+    | TIDiffEqSettings DiffEqSettings
     | TIZRCL SavedWinSettings
     deriving Show
 
@@ -68,17 +142,84 @@ data Variable =
 showText :: Show a => a -> Text
 showText = pack.show
 
--- | Convert a TINumber to Text
+-- | Convert a TINumber to Text.
 showNumber :: TINumber -> Text
 showNumber (TIReal x) = showText x
 showNumber (TIComplex x y) = showText x <> "+" <> showText y <> "i"
 
--- | Convert a Program to Text
+-- | Convert a Program to Text.
 showProgram :: Program -> Text
 showProgram (PlainText progText) = progText
 showProgram (Tokenized tokens) =
     foldMap (\(Token _ t) -> t) tokens
 
+-- | Function window settings.
+showFuncSettings :: FuncSettings -> Text
+showFuncSettings settings =
+    "\nxMin: " <> showNumber (fXMin settings)
+    <> "\nxMax: " <> showNumber (fXMax settings)
+    <> "\nxScl: " <> showNumber (fXScl settings)
+    <> "\nyMin: " <> showNumber (fYMin settings)
+    <> "\nyMax: " <> showNumber (fYMax settings)
+    <> "\nyScl: " <> showNumber (fYScl settings)
+
+-- | Polar window settings.
+showPolarSettings :: PolarSettings -> Text
+showPolarSettings settings =
+    "\nθMin: " <> showNumber (polThetaMin settings)
+    <> "\nθMax: " <> showNumber (polThetaMax settings)
+    <> "\nθStep: " <> showNumber (polThetaStep settings)
+    <> "\nxMin: " <> showNumber (polXMin settings)
+    <> "\nxMax: " <> showNumber (polXMax settings)
+    <> "\nxScl: " <> showNumber (polXScl settings)
+    <> "\nyMin: " <> showNumber (polYMin settings)
+    <> "\nyMax: " <> showNumber (polYMax settings)
+    <> "\nyScl: " <> showNumber (polYScl settings)
+
+-- | Polar window settings.
+showParamSettings :: ParamSettings -> Text
+showParamSettings settings =
+    "\ntMin: " <> showNumber (parTMin settings)
+    <> "\ntMax: " <> showNumber (parTMax settings)
+    <> "\ntStep: " <> showNumber (parTStep settings)
+    <> "\nxMin: " <> showNumber (parXMin settings)
+    <> "\nxMax: " <> showNumber (parXMax settings)
+    <> "\nxScl: " <> showNumber (parXScl settings)
+    <> "\nyMin: " <> showNumber (parYMin settings)
+    <> "\nyMax: " <> showNumber (parYMax settings)
+    <> "\nyScl: " <> showNumber (parYScl settings)
+
+-- | DiffEq window settings.
+showDiffEqSettings :: DiffEqSettings -> Text
+showDiffEqSettings settings =
+    "\ndiffTol: " <> showNumber (diffTol settings)
+    <> "\ntPlot: " <> showNumber (diffTPlot settings)
+    <> "\ntMin: " <> showNumber (diffTMin settings)
+    <> "\ntMax: " <> showNumber (diffTMax settings)
+    <> "\ntStep: " <> showNumber (diffTStep settings)
+    <> "\nxMin: " <> showNumber (diffXMin settings)
+    <> "\nxMax: " <> showNumber (diffXMax settings)
+    <> "\nxScl: " <> showNumber (diffXScl settings)
+    <> "\nyMin: " <> showNumber (diffYMin settings)
+    <> "\nyMax: " <> showNumber (diffYMax settings)
+    <> "\nyScl: " <> showNumber (diffYScl settings)
+    <> "\nxAxis: " <> showAxis (diffXAxis settings)
+    <> "\nyAxis: " <> showAxis (diffYAxis settings)
+  where
+    showAxis :: DiffEqAxis -> Text
+    showAxis AxisT = "t"
+    showAxis (AxisQ ai) =
+        let ind = fromEnum ai
+        in if ind == 0
+            then "Q"
+            else "Q" <> showText ind
+    showAxis (AxisQ' ai) =
+        let ind = fromEnum ai
+        in if ind == 0
+            then "Q'"
+            else "Q'" <> showText ind
+
+-- | Saved window settings.
 showWinSettings :: SavedWinSettings -> Text
 showWinSettings settings =
     "\nzThetaMin: " <> showNumber (zThetaMin settings)
@@ -112,6 +253,10 @@ showVariable (TIEquation txt) = txt
 showVariable (TIString txt) = txt
 showVariable (TIProgram pro) = showProgram pro
 showVariable (TIPicture pic) = showAsciiArt pic
+showVariable (TIFuncSettings settings) = showFuncSettings settings
+showVariable (TIPolarSettings settings) = showPolarSettings settings
+showVariable (TIParamSettings settings) = showParamSettings settings
+showVariable (TIDiffEqSettings settings) = showDiffEqSettings settings
 showVariable (TIZRCL settings) = showWinSettings settings
 
 -- * IO
