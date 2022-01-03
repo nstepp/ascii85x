@@ -333,9 +333,91 @@ parseVariable VarString = do
     TIString <$> parsePlaintext len
 parseVariable VarProgram = TIProgram <$> parseProgram
 parseVariable VarPicture = TIPicture <$> parsePicture
+parseVariable VarSettingsFunc = TIFuncSettings <$> parseFuncSettings
+parseVariable VarSettingsPolar = TIPolarSettings <$> parsePolarSettings
+parseVariable VarSettingsParam = TIParamSettings <$> parseParamSettings
+parseVariable VarSettingsDiff = TIDiffEqSettings <$> parseDiffEqSettings
 parseVariable VarSavedWinSize = TIZRCL <$> parseWinSettings
 parseVariable VarUnknown = return $ TIString "?"
 parseVariable _ = return $ TIString "(not implemented)"
+
+parseFuncSettings :: Parser FuncSettings
+parseFuncSettings = do
+    word8 0x51
+    word8 0x00
+    anyWord8
+    val <- FuncSettings
+        <$> parseTINumber -- fXMin
+        <*> parseTINumber -- fXMax
+        <*> parseTINumber -- fXScl
+        <*> parseTINumber -- fYMin
+        <*> parseTINumber -- fYMax
+        <*> parseTINumber -- fYScl
+    take 20
+    return val
+
+parsePolarSettings :: Parser PolarSettings
+parsePolarSettings = do
+    word8 0x5b
+    word8 0x00
+    anyWord8
+    PolarSettings
+        <$> parseTINumber -- polThetaMin
+        <*> parseTINumber -- polThetaMax
+        <*> parseTINumber -- polThetaStep
+        <*> parseTINumber -- polXMin
+        <*> parseTINumber -- polXMax
+        <*> parseTINumber -- polXScl
+        <*> parseTINumber -- polYMin
+        <*> parseTINumber -- polYMax
+        <*> parseTINumber -- polYScl
+
+parseParamSettings :: Parser ParamSettings
+parseParamSettings = do
+    word8 0x5b
+    word8 0x00
+    anyWord8
+    ParamSettings
+        <$> parseTINumber -- parTMin
+        <*> parseTINumber -- parTMax
+        <*> parseTINumber -- parTStep
+        <*> parseTINumber -- parXMin
+        <*> parseTINumber -- parXMax
+        <*> parseTINumber -- parXScl
+        <*> parseTINumber -- parYMin
+        <*> parseTINumber -- parYMax
+        <*> parseTINumber -- parYScl
+
+parseDiffEqSettings :: Parser DiffEqSettings
+parseDiffEqSettings = do
+    word8 0x71
+    word8 0x00
+    anyWord8
+    DiffEqSettings
+        <$> parseTINumber -- diffTol
+        <*> parseTINumber -- diffTPlot
+        <*> parseTINumber -- diffTMin
+        <*> parseTINumber -- diffTMax
+        <*> parseTINumber -- diffTStep
+        <*> parseTINumber -- diffXMin
+        <*> parseTINumber -- diffXMax
+        <*> parseTINumber -- diffXScl
+        <*> parseTINumber -- diffYMin
+        <*> parseTINumber -- diffYMax
+        <*> parseTINumber -- diffYScl
+        <*> parseAxis -- diffXAxis
+        <*> parseAxis -- diffYAxis
+  where
+    parseAxis :: Parser DiffEqAxis
+    parseAxis = do
+        axisCode <- anyWord8
+        return $ case axisCode of
+            0x0 -> AxisT
+            w | w >= 0x10 && w <= 0x19 ->
+                AxisQ (toEnum (fromEnum w - 0x10))
+            w | w >= 0x20 && w <= 0x29 ->
+                AxisQ' (toEnum (fromEnum w - 0x20))
+            _ -> error "Invalid axis code"
 
 parseWinSettings :: Parser SavedWinSettings
 parseWinSettings = do
