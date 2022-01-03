@@ -1,7 +1,37 @@
 
 -- | Specifics of the TI-85 variables themselves
 -- (i.e. not their representation in the file).
-module Data.TI85.Var where
+module Data.TI85.Var (
+    -- * Types
+    Variable(..),
+    TINumber(..),
+    -- ** Program
+    Program(..),
+    Token(..),
+    -- ** Window Settings
+    FuncSettings(..),
+    PolarSettings(..),
+    ParamSettings(..),
+    SavedWinSettings(..),
+    -- *** Differential Equations
+    DiffEqSettings(..),
+    DiffEqAxis(..),
+    AxisInd(..),
+
+    -- * Text Conversion
+    showVariable,
+    -- ** Variable-specific
+    showNumber,
+    showProgram,
+    showFuncSettings,
+    showPolarSettings,
+    showParamSettings,
+    showDiffEqSettings,
+    showWinSettings,
+
+    -- * IO
+    printVariable
+    ) where
 
 import Prelude hiding (concat, putStrLn)
 import Data.Text (Text, concat, pack, intercalate)
