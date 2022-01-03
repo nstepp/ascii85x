@@ -333,8 +333,28 @@ parseVariable VarString = do
     TIString <$> parsePlaintext len
 parseVariable VarProgram = TIProgram <$> parseProgram
 parseVariable VarPicture = TIPicture <$> parsePicture
+parseVariable VarSavedWinSize = TIZRCL <$> parseWinSettings
 parseVariable VarUnknown = return $ TIString "?"
 parseVariable _ = return $ TIString "(not implemented)"
+
+parseWinSettings :: Parser SavedWinSettings
+parseWinSettings = do
+    word8 0x82
+    word8 0x00
+    SavedWinSettings
+        <$> parseTINumber -- zThetaMin
+        <*> parseTINumber -- zThetaMax
+        <*> parseTINumber -- zThetaStep
+        <*> parseTINumber -- ztPlot
+        <*> parseTINumber -- ztMin
+        <*> parseTINumber -- ztMax
+        <*> parseTINumber -- ztStep
+        <*> parseTINumber -- zxMin
+        <*> parseTINumber -- zxMax
+        <*> parseTINumber -- zxScl
+        <*> parseTINumber -- zyMin
+        <*> parseTINumber -- zyMax
+        <*> parseTINumber -- zyScl
 
 parseUserMem :: Word16 -> VarTable -> Parser [Variable]
 parseUserMem baseAddr vars = do

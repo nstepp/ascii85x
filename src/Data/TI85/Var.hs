@@ -28,6 +28,24 @@ data Program = PlainText Text
 -- | Numerical variables are either Real or Complex.
 data TINumber = TIReal Double | TIComplex Double Double deriving Show
 
+-- | Saved window settings, used for ZRCL.
+data SavedWinSettings = SavedWinSettings {
+    zThetaMin :: TINumber,
+    zThetaMax :: TINumber,
+    zThetaStep :: TINumber,
+    ztPlot :: TINumber,
+    ztMin :: TINumber,
+    ztMax :: TINumber,
+    ztStep :: TINumber,
+    zxMin :: TINumber,
+    zxMax :: TINumber,
+    zxScl :: TINumber,
+    zyMin :: TINumber,
+    zyMax :: TINumber,
+    zyScl :: TINumber
+    }
+    deriving Show
+
 -- | Variables have a type and type-specific data.
 -- See also `Data.TI85.File.Variable.VarType`.
 data Variable =
@@ -40,6 +58,7 @@ data Variable =
     | TIString Text
     | TIProgram Program
     | TIPicture TIBitmap
+    | TIZRCL SavedWinSettings
     deriving Show
 
 -- * Text Conversion
@@ -60,6 +79,22 @@ showProgram (PlainText progText) = progText
 showProgram (Tokenized tokens) =
     foldMap (\(Token _ t) -> t) tokens
 
+showWinSettings :: SavedWinSettings -> Text
+showWinSettings settings =
+    "\nzThetaMin: " <> showNumber (zThetaMin settings)
+    <> "\nzThetaMax: " <> showNumber (zThetaMax settings)
+    <> "\nzThetaStep: " <> showNumber (zThetaStep settings)
+    <> "\nztPlot: " <> showNumber (ztPlot settings)
+    <> "\nztMin: " <> showNumber (ztMin settings)
+    <> "\nztMax: " <> showNumber (ztMax settings)
+    <> "\nztStep: " <> showNumber (ztStep settings)
+    <> "\nzxMin: " <> showNumber (zxMin settings)
+    <> "\nzxMax: " <> showNumber (zxMax settings)
+    <> "\nzxScl: " <> showNumber (zxScl settings)
+    <> "\nzyMin: " <> showNumber (zyMin settings)
+    <> "\nzyMax: " <> showNumber (zyMax settings)
+    <> "\nzyScl: " <> showNumber (zyScl settings)
+
 -- | Convert a Variable to Text
 showVariable :: Variable -> Text
 showVariable (TIScalar tn) = showNumber tn
@@ -77,6 +112,7 @@ showVariable (TIEquation txt) = txt
 showVariable (TIString txt) = txt
 showVariable (TIProgram pro) = showProgram pro
 showVariable (TIPicture pic) = showAsciiArt pic
+showVariable (TIZRCL settings) = showWinSettings settings
 
 -- * IO
 
