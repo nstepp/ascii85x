@@ -28,6 +28,24 @@ data Program = PlainText Text
 -- | Numerical variables are either Real or Complex.
 data TINumber = TIReal Double | TIComplex Double Double deriving Show
 
+-- | Saved window settings, used for ZRCL.
+data SavedWinSettings = SavedWinSettings {
+    zThetaMin :: TINumber,
+    zThetaMax :: TINumber,
+    zThetaStep :: TINumber,
+    ztPlot :: TINumber,
+    ztMin :: TINumber,
+    ztMax :: TINumber,
+    ztStep :: TINumber,
+    zxMin :: TINumber,
+    zxMax :: TINumber,
+    zxScl :: TINumber,
+    zyMin :: TINumber,
+    zyMax :: TINumber,
+    zyScl :: TINumber
+    }
+    deriving Show
+
 -- | Variables have a type and type-specific data.
 -- See also `Data.TI85.File.Variable.VarType`.
 data Variable =
@@ -40,6 +58,7 @@ data Variable =
     | TIString Text
     | TIProgram Program
     | TIPicture TIBitmap
+    | TIZRCL SavedWinSettings
     deriving Show
 
 -- * Text Conversion
@@ -77,6 +96,7 @@ showVariable (TIEquation txt) = txt
 showVariable (TIString txt) = txt
 showVariable (TIProgram pro) = showProgram pro
 showVariable (TIPicture pic) = showAsciiArt pic
+showVariable (TIZRCL settings) = showText settings
 
 -- * IO
 
