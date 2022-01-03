@@ -42,8 +42,13 @@ explodeWord w =
     let (bits,_) = BS.unfoldrN 8 (\x -> Just (x .&. 1, shiftR x 1)) w
     in BS.reverse bits
 
+-- Very approximate calculator-like colors
+screenColorMap :: Word8 -> Pixel8
+screenColorMap 0x0 = 0xc6
+screenColorMap _ = 0x39
+
 bytesToPixels :: ByteString -> Vector Pixel8
-bytesToPixels =  fromList . map (*255) . BS.unpack . BS.concatMap explodeWord
+bytesToPixels =  fromList . map screenColorMap . BS.unpack . BS.concatMap explodeWord
 
 bytesToImage :: ByteString -> Int -> Int -> DynamicImage
 bytesToImage bytes width height =
