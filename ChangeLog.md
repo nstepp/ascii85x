@@ -1,5 +1,9 @@
 # Changelog for ascii85x
 
+## 0.2.4.0
+
+- Handle GDB variables
+
 ## 0.2.3.0
 
 - Handle window settings
