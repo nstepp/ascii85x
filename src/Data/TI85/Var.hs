@@ -1,3 +1,8 @@
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 -- | Specifics of the TI-85 variables themselves
 -- (i.e. not their representation in the file).
@@ -17,6 +22,16 @@ module Data.TI85.Var (
     DiffEqSettings(..),
     DiffEqAxis(..),
     AxisInd(..),
+    -- ** Graphic Database
+    ModeSettings(..),
+    GraphMode(..),
+    FuncEqn(..),
+    ParamEqn(..),
+    DiffEqEqn(..),
+    GDBLibEntry(..),
+    WinSettings,
+    LibEntry,
+    GDB(..),
 
     -- * Text Conversion
     showVariable,
@@ -155,6 +170,76 @@ data SavedWinSettings = SavedWinSettings {
     }
     deriving Show
 
+data ModeSettings = ModeSettings {
+    modeDrawDot :: Bool,
+    modeSimulG :: Bool,
+    modeGridOn :: Bool,
+    modePolarGC :: Bool,
+    modeCoordOff :: Bool,
+    modeAxesOff :: Bool,
+    modeLabelOn :: Bool
+    }
+    deriving Show
+
+
+-- | There are four graphics modes, each with
+-- its own set of window ranges and equation
+-- types.
+data GraphMode = Func | Polar | Param | DiffEq
+
+-- | Plain functions and Polar functions both use
+-- a single equation.
+type FuncEqn = Text
+
+-- | Parametric functions use a pair of equations
+data ParamEqn = ParamEqn {
+    xEqn :: Text,
+    yEqm :: Text
+    } deriving Show
+
+-- | Differential equations have a single equation
+-- paired with an initial condition.
+data DiffEqEqn = DiffEqEqn {
+    diffEqn :: Text,
+    diffIC :: Double
+    } deriving Show
+
+-- | A function library entry, which depends on
+-- the graphics mode.
+type family LibEntry (a :: GraphMode) where
+    LibEntry Func = FuncEqn
+    LibEntry Polar = FuncEqn
+    LibEntry Param = ParamEqn
+    LibEntry DiffEq = DiffEqEqn
+
+-- | Window settings depend on the graphcs mode.
+type family WinSettings (a :: GraphMode) where
+    WinSettings Func = FuncSettings
+    WinSettings Polar = PolarSettings
+    WinSettings Param = ParamSettings
+    WinSettings DiffEq = DiffEqSettings
+
+-- | A graphics database entry, containing a
+-- function ID, whether or not it is currently
+-- selected, and the equations that define the
+-- function.
+data GDBLibEntry (a :: GraphMode) = GDBLibEntry {
+    libId :: Int,
+    libSelected :: Bool,
+    libEqn :: LibEntry a
+    }
+deriving instance (Show (LibEntry a)) => Show (GDBLibEntry a)
+
+-- | A graphics database contains mode settings, window
+-- settings, and a library of functions. The latter two
+-- depend on the graphcs mode.
+data GDB (a :: GraphMode) = GDB {
+    gdbMode :: ModeSettings,
+    gdbWinSettings :: WinSettings a,
+    gdbLibrary :: [GDBLibEntry a]
+    }
+deriving instance (Show (WinSettings a),Show (LibEntry a)) => Show (GDB a)
+
 -- | Variables have a type and type-specific data.
 -- See also `Data.TI85.File.Variable.VarType`.
 data Variable =
@@ -172,6 +257,10 @@ data Variable =
     | TIParamSettings ParamSettings
     | TIDiffEqSettings DiffEqSettings
     | TIZRCL SavedWinSettings
+    | TIFuncGDB (GDB Func)
+    | TIPolarGDB (GDB Polar)
+    | TIParamGDB (GDB Param)
+    | TIDiffEqGDB (GDB DiffEq)
     deriving Show
 
 -- * Text Conversion
