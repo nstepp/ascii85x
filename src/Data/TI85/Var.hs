@@ -194,7 +194,7 @@ type FuncEqn = Text
 -- | Parametric functions use a pair of equations
 data ParamEqn = ParamEqn {
     xEqn :: Text,
-    yEqm :: Text
+    yEqn :: Text
     } deriving Show
 
 -- | Differential equations have a single equation
