@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 
 -- | This module contains the highest-level user-facing functions.
 -- Typically, code using this library will want to call `readTIFile`
@@ -338,21 +339,84 @@ parseVariable VarSettingsPolar = TIPolarSettings <$> parsePolarSettings
 parseVariable VarSettingsParam = TIParamSettings <$> parseParamSettings
 parseVariable VarSettingsDiff = TIDiffEqSettings <$> parseDiffEqSettings
 parseVariable VarSavedWinSize = TIZRCL <$> parseWinSettings
+parseVariable VarGDBFunc = TIFuncGDB <$> parseFuncGDB
 parseVariable VarUnknown = return $ TIString "?"
 parseVariable _ = return $ TIString "(not implemented)"
 
-parseFuncSettings :: Parser FuncSettings
-parseFuncSettings = do
-    word8 0x51
-    word8 0x00
-    anyWord8
-    val <- FuncSettings
+parseModeSettings :: Parser ModeSettings
+parseModeSettings = do
+    modeByte <- anyWord8
+    let drawDot = testBit modeByte 0
+        simulG = testBit modeByte 1
+        gridOn = testBit modeByte 2
+        polarGC = testBit modeByte 3
+        coordOff = testBit modeByte 4
+        axesOff = testBit modeByte 5
+        labelOb = testBit modeByte 6
+    return $ ModeSettings {
+        modeDrawDot = drawDot,
+        modeSimulG = simulG,
+        modeGridOn = gridOn,
+        modePolarGC = polarGC,
+        modeCoordOff = coordOff,
+        modeAxesOff = axesOff,
+        modeLabelOn = labelOb
+        }
+
+parseFuncGDB :: Parser (GDB Func)
+parseFuncGDB = do
+    len <- anyWord16
+    mode <- parseModeSettings
+    settings <- parseBareFuncSettings
+    numFunc <- fromEnum <$> satisfy (<=99)
+    lib <- count numFunc parseFuncEntry
+    return $ GDB {
+        gdbMode = mode,
+        gdbSettings = settings,
+        gdbLib = lib
+        }
+
+parseFuncEntry :: Parser (GDBLibEntry Func)
+parseFuncEntry = do
+    idByte <- anyWord8
+    let selected = testBit idByte 7
+        funcId = idByte .&. 0x7f
+    (TIEquation eqn) <- parseVariable VarEquation
+    return $ GDBLibEntry {
+        libId = fromEnum funcId,
+        libSelected = selected,
+        libEqn = eqn
+        }
+{-
+0 	2 bytes 	Length, in bytes, of GDB, minus two.
+2 	1 byte 	Mode settings (see mode setting table below)
+3 	10 bytes 	A real number: xMin
+13 (Dh) 	10 bytes 	A real number: xMax
+23 (17h) 	10 bytes 	A real number: xScl
+33 (21h) 	10 bytes 	A real number: yMin
+43 (2Bh) 	10 bytes 	A real number: yMax
+53 (35h) 	10 bytes 	A real number: yScl
+63 (3Fh) 	10 bytes 	A real number: xRes
+73 (49h) 	1 byte 	Number of functions defined (up to 99)
+74 (4Ah) 	n bytes 	Function table - several function definitions one after another (see function table below)
+-}
+
+parseBareFuncSettings :: Parser FuncSettings
+parseBareFuncSettings = do
+    FuncSettings
         <$> parseTINumber -- fXMin
         <*> parseTINumber -- fXMax
         <*> parseTINumber -- fXScl
         <*> parseTINumber -- fYMin
         <*> parseTINumber -- fYMax
         <*> parseTINumber -- fYScl
+
+parseFuncSettings :: Parser FuncSettings
+parseFuncSettings = do
+    word8 0x51
+    word8 0x00
+    anyWord8
+    val <- parseBareFuncSettings
     take 20
     return val
 
