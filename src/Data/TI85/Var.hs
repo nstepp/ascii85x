@@ -1,8 +1,8 @@
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE UndecidableInstances #-}
 
 -- | Specifics of the TI-85 variables themselves
 -- (i.e. not their representation in the file).
@@ -29,9 +29,10 @@ module Data.TI85.Var (
     ParamEqn(..),
     DiffEqEqn(..),
     GDBLibEntry(..),
-    WinSettings,
-    LibEntry,
+    GDBEqn(..),
+    GDBSettings(..),
     GDB(..),
+    HasGDB,
 
     -- * Text Conversion
     showVariable,
@@ -181,7 +182,6 @@ data ModeSettings = ModeSettings {
     }
     deriving Show
 
-
 -- | There are four graphics modes, each with
 -- its own set of window ranges and equation
 -- types.
@@ -204,41 +204,84 @@ data DiffEqEqn = DiffEqEqn {
     diffIC :: Double
     } deriving Show
 
--- | A function library entry, which depends on
--- the graphics mode.
-type family LibEntry (a :: GraphMode) where
-    LibEntry Func = FuncEqn
-    LibEntry Polar = FuncEqn
-    LibEntry Param = ParamEqn
-    LibEntry DiffEq = DiffEqEqn
+class HasGDB (a :: GraphMode) where
+    type GDBEqn a :: *
+    type GDBSettings a :: *
 
--- | Window settings depend on the graphcs mode.
-type family WinSettings (a :: GraphMode) where
-    WinSettings Func = FuncSettings
-    WinSettings Polar = PolarSettings
-    WinSettings Param = ParamSettings
-    WinSettings DiffEq = DiffEqSettings
+    showGDBSettings :: GDB a -> Text
+    showGDBHeader :: GDB a -> Text
+
+    showGDBLib :: GDB a -> Text
+    showGDBLib gdb = intercalate "\n" (map showGDBEntry (gdbLib gdb))
+
+    showGDBEntry :: GDBLibEntry a -> Text
+
+instance HasGDB Func where
+    type GDBEqn Func = FuncEqn
+    type GDBSettings Func = FuncSettings
+
+    showGDBSettings gdb = showFuncSettings (gdbSettings gdb)
+    showGDBHeader _ = "ID\tSelected\tEquation\n"
+    showGDBEntry (GDBLibEntry entryId selected eqn) =
+        showText entryId <> "\t"
+        <> showText selected <> "\t"
+        <> eqn
+
+instance HasGDB Polar where
+    type GDBEqn Polar = FuncEqn
+    type GDBSettings Polar = PolarSettings
+    showGDBSettings gdb = showPolarSettings (gdbSettings gdb)
+    showGDBHeader _ = "ID\tSelected\tEquation\n"
+    showGDBEntry (GDBLibEntry entryId selected eqn) =
+        showText entryId <> "\t"
+        <> showText selected <> "\t"
+        <> eqn
+
+instance HasGDB Param where
+    type GDBEqn Param = ParamEqn
+    type GDBSettings Param = ParamSettings
+    showGDBSettings gdb = showParamSettings (gdbSettings gdb)
+    showGDBHeader _ = "ID\tSelected\tx-Equation\ty-Equation\n"
+    showGDBEntry (GDBLibEntry entryId selected eqn) =
+        showText entryId <> "\t"
+        <> showText selected <> "\t"
+        <> xEqn eqn <> "\t"
+        <> yEqn eqn
+
+instance HasGDB DiffEq where
+    type GDBEqn DiffEq = DiffEqEqn
+    type GDBSettings DiffEq = DiffEqSettings
+    showGDBSettings gdb = showDiffEqSettings (gdbSettings gdb)
+    showGDBHeader _ = "ID\tSelected\tEquation\tInitial Condition\n"
+    showGDBEntry (GDBLibEntry entryId selected eqn) =
+        showText entryId <> "\t"
+        <> showText selected <> "\t"
+        <> diffEqn eqn <> "\t"
+        <> showText (diffIC eqn)
+
 
 -- | A graphics database entry, containing a
 -- function ID, whether or not it is currently
 -- selected, and the equations that define the
 -- function.
-data GDBLibEntry (a :: GraphMode) = GDBLibEntry {
-    libId :: Int,
-    libSelected :: Bool,
-    libEqn :: LibEntry a
-    }
-deriving instance (Show (LibEntry a)) => Show (GDBLibEntry a)
+data GDBLibEntry (a :: GraphMode) where
+    GDBLibEntry :: Show (GDBEqn a) => {
+        libId :: Int,
+        libSelected :: Bool,
+        libEqn :: GDBEqn a
+        } -> GDBLibEntry a
+deriving instance Show (GDBLibEntry a)
 
 -- | A graphics database contains mode settings, window
 -- settings, and a library of functions. The latter two
 -- depend on the graphcs mode.
-data GDB (a :: GraphMode) = GDB {
-    gdbMode :: ModeSettings,
-    gdbWinSettings :: WinSettings a,
-    gdbLibrary :: [GDBLibEntry a]
-    }
-deriving instance (Show (WinSettings a),Show (LibEntry a)) => Show (GDB a)
+data GDB (a :: GraphMode) where
+    GDB :: (Show (GDBSettings a), Show (GDBEqn a)) => {
+        gdbMode :: ModeSettings,
+        gdbSettings :: GDBSettings a,
+        gdbLib :: [GDBLibEntry a]
+        } -> GDB a
+deriving instance Show (GDB a)
 
 -- | Variables have a type and type-specific data.
 -- See also `Data.TI85.File.Variable.VarType`.
