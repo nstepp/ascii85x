@@ -22,7 +22,7 @@ module Data.TI85.Var (
     DiffEqSettings(..),
     DiffEqAxis(..),
     AxisInd(..),
-    -- ** Graphic Database
+    -- ** Graph Database
     ModeSettings(..),
     GraphMode(..),
     FuncEqn(..),
@@ -184,7 +184,7 @@ data ModeSettings = ModeSettings {
     }
     deriving Show
 
--- | There are four graphics modes, each with
+-- | There are four graph modes, each with
 -- its own set of window ranges and equation
 -- types.
 data GraphMode = Func | Polar | Param | DiffEq
@@ -262,7 +262,7 @@ instance HasGDB DiffEq where
         <> showText (diffIC eqn)
 
 
--- | A graphics database entry, containing a
+-- | A graph database entry, containing a
 -- function ID, whether or not it is currently
 -- selected, and the equations that define the
 -- function.
@@ -274,7 +274,7 @@ data GDBLibEntry (a :: GraphMode) where
         } -> GDBLibEntry a
 deriving instance Show (GDBLibEntry a)
 
--- | A graphics database contains mode settings, window
+-- | A graph database contains mode settings, window
 -- settings, and a library of functions. The latter two
 -- depend on the graphcs mode.
 data GDB (a :: GraphMode) where
