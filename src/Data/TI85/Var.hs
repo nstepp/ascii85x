@@ -44,6 +44,8 @@ module Data.TI85.Var (
     showParamSettings,
     showDiffEqSettings,
     showWinSettings,
+    showGDB,
+    showGDBMode,
 
     -- * IO
     printVariable
@@ -409,6 +411,26 @@ showWinSettings settings =
     <> "\nzyMax: " <> showNumber (zyMax settings)
     <> "\nzyScl: " <> showNumber (zyScl settings)
 
+showGDBMode :: ModeSettings -> Text
+showGDBMode mode =
+    "Dot/Line: " <> if modeDrawDot mode then "Dot" else "Line" <> "\n"
+    <> "Simul/Seq: " <> if modeSimulG mode then "Simul" else "Seq" <> "\n"
+    <> "Grid: " <> showText (modeGridOn mode) <> "\n"
+    <> "Polar: " <> showText (modePolarGC mode) <> "\n"
+    <> "Coord: " <> showText (not $ modeCoordOff mode) <> "\n"
+    <> "Axes: " <> showText (not $ modeAxesOff mode) <> "\n"
+    <> "Label: " <> showText (modeLabelOn mode) <> "\n"
+
+showGDB :: HasGDB (a :: GraphMode) => GDB (a :: GraphMode) -> Text
+showGDB gdb =
+    "Mode Settings:\n"
+    <> showGDBMode (gdbMode gdb) <> "\n"
+    <> "Window Settings:"
+    <> showGDBSettings gdb <> "\n\n"
+    <> "Library:\n"
+    <> showGDBHeader gdb
+    <> showGDBLib gdb
+
 -- | Convert a Variable to Text
 showVariable :: Variable -> Text
 showVariable (TIScalar tn) = showNumber tn
@@ -431,6 +453,10 @@ showVariable (TIPolarSettings settings) = showPolarSettings settings
 showVariable (TIParamSettings settings) = showParamSettings settings
 showVariable (TIDiffEqSettings settings) = showDiffEqSettings settings
 showVariable (TIZRCL settings) = showWinSettings settings
+showVariable (TIFuncGDB gdb) = showGDB gdb
+showVariable (TIPolarGDB gdb) = showGDB gdb
+showVariable (TIParamGDB gdb) = showGDB gdb
+showVariable (TIDiffEqGDB gdb) = showGDB gdb
 
 -- * IO
 
