@@ -1,3 +1,5 @@
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE TypeFamilies #-}
 
 -- | Specifics of the TI-85 variables themselves
 -- (i.e. not their representation in the file).
@@ -17,6 +19,17 @@ module Data.TI85.Var (
     DiffEqSettings(..),
     DiffEqAxis(..),
     AxisInd(..),
+    -- ** Graph Database
+    ModeSettings(..),
+    GraphMode(..),
+    FuncEqn(..),
+    ParamEqn(..),
+    DiffEqEqn(..),
+    GDBLibEntry(..),
+    GDBEqn(..),
+    GDBSettings(..),
+    GDB(..),
+    HasGDB,
 
     -- * Text Conversion
     showVariable,
@@ -28,13 +41,15 @@ module Data.TI85.Var (
     showParamSettings,
     showDiffEqSettings,
     showWinSettings,
+    showGDB,
+    showGDBMode,
 
     -- * IO
     printVariable
     ) where
 
 import Prelude hiding (concat, putStrLn)
-import Data.Text (Text, concat, pack, intercalate)
+import Data.Text (Text, concat, pack, intercalate, unpack)
 import Data.Text.IO (putStrLn)
 import Data.TI85.Token (TokenDef)
 import Data.TI85.Var.Pic
@@ -155,6 +170,118 @@ data SavedWinSettings = SavedWinSettings {
     }
     deriving Show
 
+data ModeSettings = ModeSettings {
+    modeDrawDot :: Bool,
+    modeSimulG :: Bool,
+    modeGridOn :: Bool,
+    modePolarGC :: Bool,
+    modeCoordOff :: Bool,
+    modeAxesOff :: Bool,
+    modeLabelOn :: Bool
+    }
+    deriving Show
+
+-- | There are four graph modes, each with
+-- its own set of window ranges and equation
+-- types.
+data GraphMode = Func | Polar | Param | DiffEq
+
+-- | Plain functions and Polar functions both use
+-- a single equation.
+type FuncEqn = Text
+
+-- | Parametric functions use a pair of equations
+data ParamEqn = ParamEqn {
+    xEqn :: Text,
+    yEqn :: Text
+    } deriving Show
+
+-- | Differential equations have a single equation
+-- paired with an initial condition.
+data DiffEqEqn = DiffEqEqn {
+    diffEqn :: Text,
+    diffIC :: Double
+    } deriving Show
+
+class HasGDB (a :: GraphMode) where
+    type GDBEqn a :: *
+    type GDBSettings a :: *
+
+    showGDBSettings :: GDB a -> Text
+    showGDBHeader :: GDB a -> Text
+
+    showGDBLib :: GDB a -> Text
+    showGDBLib gdb = intercalate "\n" (map showGDBEntry (gdbLib gdb))
+
+    showGDBEntry :: GDBLibEntry a -> Text
+
+instance HasGDB Func where
+    type GDBEqn Func = FuncEqn
+    type GDBSettings Func = FuncSettings
+
+    showGDBSettings gdb = showFuncSettings (gdbSettings gdb)
+    showGDBHeader _ = "ID\tSelected\tEquation\n"
+    showGDBEntry (GDBLibEntry entryId selected eqn) =
+        showText entryId <> "\t"
+        <> showText selected <> "\t"
+        <> eqn
+
+instance HasGDB Polar where
+    type GDBEqn Polar = FuncEqn
+    type GDBSettings Polar = PolarSettings
+    showGDBSettings gdb = showPolarSettings (gdbSettings gdb)
+    showGDBHeader _ = "ID\tSelected\tEquation\n"
+    showGDBEntry (GDBLibEntry entryId selected eqn) =
+        showText entryId <> "\t"
+        <> showText selected <> "\t"
+        <> eqn
+
+instance HasGDB Param where
+    type GDBEqn Param = ParamEqn
+    type GDBSettings Param = ParamSettings
+    showGDBSettings gdb = showParamSettings (gdbSettings gdb)
+    showGDBHeader _ = "ID\tSelected\tx-Equation\ty-Equation\n"
+    showGDBEntry (GDBLibEntry entryId selected eqn) =
+        showText entryId <> "\t"
+        <> showText selected <> "\t"
+        <> xEqn eqn <> "\t"
+        <> yEqn eqn
+
+instance HasGDB DiffEq where
+    type GDBEqn DiffEq = DiffEqEqn
+    type GDBSettings DiffEq = DiffEqSettings
+    showGDBSettings gdb = showDiffEqSettings (gdbSettings gdb)
+    showGDBHeader _ = "ID\tSelected\tEquation\tInitial Condition\n"
+    showGDBEntry (GDBLibEntry entryId selected eqn) =
+        showText entryId <> "\t"
+        <> showText selected <> "\t"
+        <> diffEqn eqn <> "\t"
+        <> showText (diffIC eqn)
+
+
+-- | A graph database entry, containing a
+-- function ID, whether or not it is currently
+-- selected, and the equations that define the
+-- function.
+data GDBLibEntry (a :: GraphMode) = GDBLibEntry {
+        libId :: Int,
+        libSelected :: Bool,
+        libEqn :: GDBEqn a
+        }
+
+-- | A graph database contains mode settings, window
+-- settings, and a library of functions. The latter two
+-- depend on the graphcs mode.
+data GDB (a :: GraphMode) = GDB {
+        gdbMode :: ModeSettings,
+        gdbSettings :: GDBSettings a,
+        gdbLib :: [GDBLibEntry a]
+        }
+
+instance HasGDB a => Show (GDB (a :: GraphMode)) where
+    show gdb = unpack $ showGDB gdb
+
+
 -- | Variables have a type and type-specific data.
 -- See also `Data.TI85.File.Variable.VarType`.
 data Variable =
@@ -172,6 +299,10 @@ data Variable =
     | TIParamSettings ParamSettings
     | TIDiffEqSettings DiffEqSettings
     | TIZRCL SavedWinSettings
+    | TIFuncGDB (GDB Func)
+    | TIPolarGDB (GDB Polar)
+    | TIParamGDB (GDB Param)
+    | TIDiffEqGDB (GDB DiffEq)
     deriving Show
 
 -- * Text Conversion
@@ -277,6 +408,26 @@ showWinSettings settings =
     <> "\nzyMax: " <> showNumber (zyMax settings)
     <> "\nzyScl: " <> showNumber (zyScl settings)
 
+showGDBMode :: ModeSettings -> Text
+showGDBMode mode =
+    "Dot/Line: " <> if modeDrawDot mode then "Dot" else "Line" <> "\n"
+    <> "Simul/Seq: " <> if modeSimulG mode then "Simul" else "Seq" <> "\n"
+    <> "Grid: " <> showText (modeGridOn mode) <> "\n"
+    <> "Polar: " <> showText (modePolarGC mode) <> "\n"
+    <> "Coord: " <> showText (not $ modeCoordOff mode) <> "\n"
+    <> "Axes: " <> showText (not $ modeAxesOff mode) <> "\n"
+    <> "Label: " <> showText (modeLabelOn mode) <> "\n"
+
+showGDB :: HasGDB (a :: GraphMode) => GDB (a :: GraphMode) -> Text
+showGDB gdb =
+    "Mode Settings:\n"
+    <> showGDBMode (gdbMode gdb) <> "\n"
+    <> "Window Settings:"
+    <> showGDBSettings gdb <> "\n\n"
+    <> "Library:\n"
+    <> showGDBHeader gdb
+    <> showGDBLib gdb
+
 -- | Convert a Variable to Text
 showVariable :: Variable -> Text
 showVariable (TIScalar tn) = showNumber tn
@@ -299,6 +450,10 @@ showVariable (TIPolarSettings settings) = showPolarSettings settings
 showVariable (TIParamSettings settings) = showParamSettings settings
 showVariable (TIDiffEqSettings settings) = showDiffEqSettings settings
 showVariable (TIZRCL settings) = showWinSettings settings
+showVariable (TIFuncGDB gdb) = showGDB gdb
+showVariable (TIPolarGDB gdb) = showGDB gdb
+showVariable (TIParamGDB gdb) = showGDB gdb
+showVariable (TIDiffEqGDB gdb) = showGDB gdb
 
 -- * IO
 
