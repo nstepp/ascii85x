@@ -1,4 +1,3 @@
-{-# LANGUAGE GADTs #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE StandaloneDeriving #-}
@@ -52,7 +51,7 @@ module Data.TI85.Var (
     ) where
 
 import Prelude hiding (concat, putStrLn)
-import Data.Text (Text, concat, pack, intercalate)
+import Data.Text (Text, concat, pack, intercalate, unpack)
 import Data.Text.IO (putStrLn)
 import Data.TI85.Token (TokenDef)
 import Data.TI85.Var.Pic
@@ -266,24 +265,24 @@ instance HasGDB DiffEq where
 -- function ID, whether or not it is currently
 -- selected, and the equations that define the
 -- function.
-data GDBLibEntry (a :: GraphMode) where
-    GDBLibEntry :: Show (GDBEqn a) => {
+data GDBLibEntry (a :: GraphMode) = GDBLibEntry {
         libId :: Int,
         libSelected :: Bool,
         libEqn :: GDBEqn a
-        } -> GDBLibEntry a
-deriving instance Show (GDBLibEntry a)
+        }
 
 -- | A graph database contains mode settings, window
 -- settings, and a library of functions. The latter two
 -- depend on the graphcs mode.
-data GDB (a :: GraphMode) where
-    GDB :: (Show (GDBSettings a), Show (GDBEqn a)) => {
+data GDB (a :: GraphMode) = GDB {
         gdbMode :: ModeSettings,
         gdbSettings :: GDBSettings a,
         gdbLib :: [GDBLibEntry a]
-        } -> GDB a
-deriving instance Show (GDB a)
+        }
+
+instance HasGDB a => Show (GDB (a :: GraphMode)) where
+    show gdb = unpack $ showGDB gdb
+
 
 -- | Variables have a type and type-specific data.
 -- See also `Data.TI85.File.Variable.VarType`.
