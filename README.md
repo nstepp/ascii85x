@@ -84,6 +84,9 @@ The variable types supported are:
 |Equation    | 85y       |
 |String      | 85s       |
 |Program     | 85p       |
+|Picture     | 85i       |
+|Settings    | 85?       |
+|GDB         | 85d       |
 
 A group file (`85g`) may contain many of these types of variables.
 
