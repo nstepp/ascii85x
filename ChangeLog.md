@@ -1,5 +1,9 @@
 # Changelog for ascii85x
 
+## 0.2.4.1
+
+- Dependency updates
+
 ## 0.2.4.0
 
 - Handle GDB variables
